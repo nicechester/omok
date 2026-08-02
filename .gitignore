@@ -1,0 +1,6 @@
+GoogleService-Info.plist
+build/
+*.xcuserdatad
+DerivedData/
+.DS_Store
+xcuserdata/

@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "omok": {
+      "games": {
+        "$gameId": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "status":    { ".validate": "newData.isString() && newData.val().matches(/^(waiting|playing|finished)$/)" },
+          "turn":      { ".validate": "newData.val() === 'black' || newData.val() === 'white'" },
+          "round":     { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "moveCount": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 225" },
+          "result":    { ".validate": "newData.val() === 'black' || newData.val() === 'white' || newData.val() === 'draw'" },
+          "board": {
+            "$cell": {
+              ".validate": "$cell.matches(/^[0-9]{1,2}_[0-9]{1,2}$/) && (newData.val() === 'black' || newData.val() === 'white') && (!data.exists() || data.val() === newData.val())"
+            }
+          },
+          "players": {
+            "$color": {
+              ".validate": "$color === 'black' || $color === 'white'",
+              "uid": { ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val() || newData.val() === auth.uid)" },
+              "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20 && (!data.exists() || data.val() === newData.val() || newData.parent().child('uid').val() === auth.uid)" },
+              "joinedAt": { ".validate": "newData.isNumber()" }
+            }
+          },
+          "rematch": {
+            "$uid": { ".validate": "$uid === auth.uid && newData.val() === true" }
+          }
+        }
+      }
+    }
+  }
+}
