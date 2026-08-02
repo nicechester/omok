@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import AudioToolbox
 
 @Observable
 @MainActor
@@ -9,12 +10,11 @@ final class GameViewModel {
     var game: GameState?
     var mySeat: Stone?
     var errorMessage: String?
-    var gameNotFound = false
+    private var hadOpponent = false
 
     private let uid: String
     private let playerName: String
     private let repository: GameRepository
-    private let isCreator: Bool
     // A plain (non-actor-isolated) box so `deinit` — which runs nonisolated —
     // can cancel the listening task without touching a MainActor-isolated
     // stored property directly.
@@ -28,12 +28,11 @@ final class GameViewModel {
         set { listenTaskBox.task = newValue }
     }
 
-    init(gameId: String, uid: String, playerName: String, repository: GameRepository = FirebaseGameRepository(), isCreator: Bool) {
+    init(gameId: String, uid: String, playerName: String, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
         self.repository = repository
-        self.isCreator = isCreator
     }
 
     // MARK: - Derived state
@@ -95,22 +94,19 @@ final class GameViewModel {
     // MARK: - Lifecycle
 
     func start() async {
-        if isCreator {
+        do {
+            mySeat = try await repository.claimSeat(gameId: gameId, uid: uid, name: playerName)
+        } catch GameError.gameNotFound {
+            // Game doesn't exist yet, create it (creator gets black seat)
             do {
                 try await repository.createGame(gameId: gameId, creatorUid: uid, creatorName: playerName)
+                mySeat = .black
             } catch {
                 errorMessage = error.localizedDescription
                 return
             }
-        }
-
-        do {
-            mySeat = try await repository.claimSeat(gameId: gameId, uid: uid, name: playerName)
         } catch GameError.gameFull {
             mySeat = nil
-        } catch GameError.gameNotFound {
-            gameNotFound = true
-            return
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -126,13 +122,16 @@ final class GameViewModel {
     }
 
     private func handle(_ state: GameState?) async {
+        let previousGame = game
+        guard let state else { return }
         game = state
 
-        guard let state else {
-            gameNotFound = true
-            return
+        // Play sound when opponent joins
+        if let mySeat,
+           previousGame?.players[mySeat.opposite] == nil,
+           state.players[mySeat.opposite] != nil {
+            AudioServicesPlaySystemSound(1054) // subtle "tock" sound
         }
-        gameNotFound = false
 
         guard state.status == .finished, bothVotedRematch else { return }
         // Both clients may observe the second vote and both race to reset;

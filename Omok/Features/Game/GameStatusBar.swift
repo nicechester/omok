@@ -4,20 +4,18 @@ struct GameStatusBar: View {
     let gameId: String
     let statusText: String
     let mySeat: Stone?
-    let opponentName: String?
+    let myName: String
+    let players: [Stone: PlayerSeat]
 
     @State private var showCopyFeedback = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Room code and share
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Room")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                HStack(spacing: 8) {
+        VStack(spacing: 4) {
+            // Top row: room code + status
+            HStack(spacing: 12) {
+                HStack(spacing: 6) {
                     Text(gameId)
-                        .font(.title2)
+                        .font(.headline)
                         .monospaced()
                         .fontWeight(.semibold)
                     Button(action: {
@@ -28,7 +26,7 @@ struct GameStatusBar: View {
                         }
                     }) {
                         Image(systemName: showCopyFeedback ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundColor(showCopyFeedback ? .green : .blue)
                     }
                     ShareLink(
@@ -37,52 +35,69 @@ struct GameStatusBar: View {
                         message: Text("Join my game with code: \(gameId)")
                     ) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                     }
                 }
-            }
 
-            Spacer()
+                Spacer()
 
-            // Status text
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Status")
-                    .font(.caption)
-                    .foregroundColor(.gray)
                 Text(statusText)
-                    .font(.headline)
-                if let opponentName {
-                    Text("vs \(opponentName)")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
             }
 
-            // Your color swatch
-            if let mySeat = mySeat {
-                VStack(alignment: .center, spacing: 4) {
-                    Text("Your Color")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Circle()
-                        .fill(mySeat == .black ? Color.black : Color.white)
-                        .frame(width: 20, height: 20)
-                        .overlay(Circle().stroke(Color.gray, lineWidth: 0.5))
-                }
+            // Bottom row: both players
+            HStack(spacing: 16) {
+                playerBadge(for: .black)
+                playerBadge(for: .white)
+                Spacer()
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .background(Color(.systemGray6))
+    }
+
+    private func playerBadge(for color: Stone) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color == .black ? Color.black : Color.white)
+                .frame(width: 12, height: 12)
+                .overlay(Circle().stroke(Color.gray, lineWidth: 0.5))
+
+            // Show user's own name if this is their seat
+            if let myColor = mySeat, color == myColor, !myName.isEmpty {
+                Text(myName)
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .fontWeight(.semibold)
+            }
+            // Show opponent's name from game state
+            else if let seat = players[color], let name = seat.displayName, !name.isEmpty {
+                Text(name)
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
+            // Waiting for opponent
+            else {
+                Text("Waiting…")
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+        }
     }
 }
 
 #Preview {
-    VStack {
-        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, opponentName: "Mina")
-        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, opponentName: "Chester")
-        GameStatusBar(gameId: "test1", statusText: "Spectating", mySeat: nil, opponentName: nil)
+    let blackSeat = PlayerSeat(uid: "user1", joinedAt: 0, name: "Chester")
+    let whiteSeat = PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina")
+    let emptyPlayersDict = [Stone: PlayerSeat]()
+    let fullPlayersDict: [Stone: PlayerSeat] = [.black: blackSeat, .white: whiteSeat]
+
+    VStack(spacing: 16) {
+        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict)
+        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict)
+        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:])
+        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict)
     }
 }
