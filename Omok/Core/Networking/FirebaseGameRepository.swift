@@ -64,83 +64,61 @@ final class FirebaseGameRepository: GameRepository {
 
     func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone {
         let ref = gameRef(gameId)
-        var failure: GameError?
         let sanitizedName = PlayerName.sanitize(name)
 
-        let (_, snapshot) = try await runTransaction(ref) { currentData in
-            guard var dict = currentData.value as? [String: Any] else {
-                failure = .gameNotFound
-                return .abort()
-            }
-
-            var players = dict["players"] as? [String: Any] ?? [:]
-
-            for color in [Stone.black, Stone.white] {
-                guard var seat = players[color.rawValue] as? [String: Any],
-                      seat["uid"] as? String == uid else {
-                    continue
-                }
-
-                let existingName = seat["name"] as? String ?? ""
-                if existingName != sanitizedName, !sanitizedName.isEmpty {
-                    seat["name"] = sanitizedName
-                    players[color.rawValue] = seat
-                    dict["players"] = players
-                    dict["updatedAt"] = Self.nowMillis()
-                    currentData.value = dict
-                    return .success(withValue: currentData)
-                }
-
-                return .success(withValue: currentData)
-            }
-
-            let blackTaken = players[Stone.black.rawValue] != nil
-            let whiteTaken = players[Stone.white.rawValue] != nil
-
-            guard !(blackTaken && whiteTaken) else {
-                failure = .gameFull
-                return .abort()
-            }
-
-            let seatColor: Stone = blackTaken ? .white : .black
-            var newSeat: [String: Any] = [
-                "uid": uid,
-                "joinedAt": Self.nowMillis()
-            ]
-            if !sanitizedName.isEmpty {
-                newSeat["name"] = sanitizedName
-            }
-            players[seatColor.rawValue] = newSeat
-            dict["players"] = players
-
-            if players[Stone.black.rawValue] != nil && players[Stone.white.rawValue] != nil {
-                dict["status"] = GameStatus.playing.rawValue
-            }
-            dict["updatedAt"] = Self.nowMillis()
-
-            currentData.value = dict
-            return .success(withValue: currentData)
-        }
-
-        if let failure {
-            throw failure
-        }
-
-        guard let dict = snapshot.value as? [String: Any],
-              let players = dict["players"] as? [String: Any] else {
+        // Fetch current game state
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
             throw GameError.gameNotFound
         }
 
-        for (colorKey, seatValue) in players {
-            guard let color = Stone(rawValue: colorKey),
-                  let seatDict = seatValue as? [String: Any],
-                  seatDict["uid"] as? String == uid else {
-                continue
+        let players = dict["players"] as? [String: Any] ?? [:]
+
+        // Check if already seated
+        for color in [Stone.black, Stone.white] {
+            if let seat = players[color.rawValue] as? [String: Any],
+               seat["uid"] as? String == uid {
+                // Already seated, update name if needed
+                let existingName = seat["name"] as? String ?? ""
+                if existingName != sanitizedName, !sanitizedName.isEmpty {
+                    try await ref.child("players/\(color.rawValue)/name").setValue(sanitizedName)
+                    try await ref.child("updatedAt").setValue(ServerValue.timestamp())
+                }
+                return color
             }
-            return color
         }
 
-        throw GameError.gameFull
+        // Find empty seat
+        let blackTaken = players[Stone.black.rawValue] != nil
+        let whiteTaken = players[Stone.white.rawValue] != nil
+
+        guard !(blackTaken && whiteTaken) else {
+            throw GameError.gameFull
+        }
+
+        let seatColor: Stone = blackTaken ? .white : .black
+        var newSeat: [String: Any] = [
+            "uid": uid,
+            "joinedAt": ServerValue.timestamp()
+        ]
+        if !sanitizedName.isEmpty {
+            newSeat["name"] = sanitizedName
+        }
+
+        // Write seat and update status if both players present
+        var updates: [String: Any] = [
+            "players/\(seatColor.rawValue)": newSeat,
+            "updatedAt": ServerValue.timestamp()
+        ]
+        if blackTaken || seatColor == .black {
+            // Other seat was taken or we're taking black, so after this write both are filled
+            if blackTaken && seatColor == .white {
+                updates["status"] = GameStatus.playing.rawValue
+            }
+        }
+
+        try await ref.updateChildValues(updates)
+        return seatColor
     }
 
     // MARK: - Place stone
@@ -151,75 +129,68 @@ final class FirebaseGameRepository: GameRepository {
         }
 
         let ref = gameRef(gameId)
-        var failure: GameError?
 
-        _ = try await runTransaction(ref) { currentData in
-            guard var dict = currentData.value as? [String: Any] else {
-                failure = .gameNotFound
-                return .abort()
-            }
+        // Fetch current state
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
 
-            guard let statusRaw = dict["status"] as? String,
-                  statusRaw == GameStatus.playing.rawValue else {
-                failure = .gameNotActive
-                return .abort()
-            }
+        guard let statusRaw = dict["status"] as? String,
+              statusRaw == GameStatus.playing.rawValue else {
+            throw GameError.gameNotActive
+        }
 
-            guard let turnRaw = dict["turn"] as? String,
-                  let turn = Stone(rawValue: turnRaw) else {
-                failure = .gameNotActive
-                return .abort()
-            }
+        guard let turnRaw = dict["turn"] as? String,
+              let turn = Stone(rawValue: turnRaw) else {
+            throw GameError.gameNotActive
+        }
 
-            guard let players = dict["players"] as? [String: Any],
-                  let seatDict = players[turn.rawValue] as? [String: Any],
-                  seatDict["uid"] as? String == uid else {
-                failure = .notYourTurn
-                return .abort()
-            }
+        guard let players = dict["players"] as? [String: Any],
+              let seatDict = players[turn.rawValue] as? [String: Any],
+              seatDict["uid"] as? String == uid else {
+            throw GameError.notYourTurn
+        }
 
-            var board = dict["board"] as? [String: Any] ?? [:]
-            let key = cell.key
-            guard board[key] == nil else {
-                failure = .cellOccupied
-                return .abort()
-            }
+        let board = dict["board"] as? [String: Any] ?? [:]
+        let key = cell.key
+        guard board[key] == nil else {
+            throw GameError.cellOccupied
+        }
 
-            board[key] = turn.rawValue
-            dict["board"] = board
-
-            let moveCount = (dict["moveCount"] as? Int ?? 0) + 1
-            dict["moveCount"] = moveCount
-            dict["lastMove"] = ["r": cell.r, "c": cell.c, "color": turn.rawValue]
-            dict["turn"] = turn.opposite.rawValue
-            dict["updatedAt"] = Self.nowMillis()
-
-            var boardCells: [Cell: Stone] = [:]
-            for (boardKey, boardValue) in board {
-                guard let boardCell = Cell(key: boardKey),
-                      let stoneRaw = boardValue as? String,
-                      let stone = Stone(rawValue: stoneRaw) else {
-                    continue
-                }
+        // Build current board for win detection
+        var boardCells: [Cell: Stone] = [:]
+        for (boardKey, boardValue) in board {
+            if let boardCell = Cell(key: boardKey),
+               let stoneRaw = boardValue as? String,
+               let stone = Stone(rawValue: stoneRaw) {
                 boardCells[boardCell] = stone
             }
+        }
+        boardCells[cell] = turn
 
-            if let line = GomokuRules.winningLine(board: boardCells, from: cell, color: turn) {
-                dict["status"] = GameStatus.finished.rawValue
-                dict["result"] = turn.rawValue
-                dict["winningLine"] = line.map { ["r": $0.r, "c": $0.c] }
-            } else if GomokuRules.isBoardFull(moveCount: moveCount) {
-                dict["status"] = GameStatus.finished.rawValue
-                dict["result"] = GameResult.draw.rawValue
-            }
+        let moveCount = (dict["moveCount"] as? Int ?? 0) + 1
 
-            currentData.value = dict
-            return .success(withValue: currentData)
+        // Prepare updates
+        var updates: [String: Any] = [
+            "board/\(key)": turn.rawValue,
+            "moveCount": moveCount,
+            "lastMove": ["r": cell.r, "c": cell.c, "color": turn.rawValue],
+            "turn": turn.opposite.rawValue,
+            "updatedAt": ServerValue.timestamp()
+        ]
+
+        // Check for win
+        if let line = GomokuRules.winningLine(board: boardCells, from: cell, color: turn) {
+            updates["status"] = GameStatus.finished.rawValue
+            updates["result"] = turn.rawValue
+            updates["winningLine"] = line.map { ["r": $0.r, "c": $0.c] }
+        } else if GomokuRules.isBoardFull(moveCount: moveCount) {
+            updates["status"] = GameStatus.finished.rawValue
+            updates["result"] = GameResult.draw.rawValue
         }
 
-        if let failure {
-            throw failure
-        }
+        try await ref.updateChildValues(updates)
     }
 
     // MARK: - Rematch
@@ -230,72 +201,35 @@ final class FirebaseGameRepository: GameRepository {
 
     func resetForRematch(gameId: String) async throws {
         let ref = gameRef(gameId)
-        var failure: GameError?
 
-        _ = try await runTransaction(ref) { currentData in
-            guard var dict = currentData.value as? [String: Any] else {
-                failure = .gameNotFound
-                return .abort()
-            }
-
-            // Idempotent guard: if the game isn't finished, either it was
-            // already reset by the other client's racing transaction, or a
-            // rematch was requested out of turn. Abort silently (no failure
-            // set) so a harmless double-fire never surfaces an error.
-            guard let statusRaw = dict["status"] as? String,
-                  statusRaw == GameStatus.finished.rawValue else {
-                return .abort()
-            }
-
-            let round = (dict["round"] as? Int ?? 0) + 1
-            dict["round"] = round
-            dict["moveCount"] = 0
-            dict["board"] = NSNull()
-            dict["lastMove"] = NSNull()
-            dict["result"] = NSNull()
-            dict["winningLine"] = NSNull()
-            dict["rematch"] = NSNull()
-            dict["turn"] = (round % 2 == 0 ? Stone.black : Stone.white).rawValue
-            dict["status"] = GameStatus.playing.rawValue
-            dict["updatedAt"] = Self.nowMillis()
-
-            currentData.value = dict
-            return .success(withValue: currentData)
+        // Fetch current state to get round
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
         }
 
-        if let failure {
-            throw failure
+        guard let statusRaw = dict["status"] as? String,
+              statusRaw == GameStatus.finished.rawValue else {
+            // Already reset by other client, ignore
+            return
         }
-    }
 
-    // MARK: - Transaction helper
+        let round = (dict["round"] as? Int ?? 0) + 1
 
-    /// Wraps `runTransactionBlock` (there is no async transaction API in the
-    /// SDK) in a checked continuation. The transaction block runs
-    /// synchronously (possibly more than once, on retry) on Firebase's
-    /// internal queue before the completion block fires, so callers may
-    /// safely capture a local `var` to record why a `.abort()` happened.
-    private func runTransaction(
-        _ ref: DatabaseReference,
-        _ block: @escaping (MutableData) -> TransactionResult
-    ) async throws -> (committed: Bool, snapshot: DataSnapshot) {
-        try await withCheckedThrowingContinuation { continuation in
-            ref.runTransactionBlock(block) { error, committed, snapshot in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let snapshot else {
-                    continuation.resume(throwing: GameError.gameNotFound)
-                    return
-                }
-                continuation.resume(returning: (committed, snapshot))
-            }
-        }
-    }
+        let updates: [String: Any] = [
+            "round": round,
+            "moveCount": 0,
+            "board": NSNull(),
+            "lastMove": NSNull(),
+            "result": NSNull(),
+            "winningLine": NSNull(),
+            "rematch": NSNull(),
+            "turn": (round % 2 == 0 ? Stone.black : Stone.white).rawValue,
+            "status": GameStatus.playing.rawValue,
+            "updatedAt": ServerValue.timestamp()
+        ]
 
-    private static func nowMillis() -> Int {
-        Int(Date().timeIntervalSince1970 * 1000)
+        try await ref.updateChildValues(updates)
     }
 
     // MARK: - Codec
@@ -309,12 +243,20 @@ final class FirebaseGameRepository: GameRepository {
 
     private static func decodeGameState(from dict: [String: Any]) -> GameState? {
         guard let statusRaw = dict["status"] as? String,
-              let status = GameStatus(rawValue: statusRaw),
-              let turnRaw = dict["turn"] as? String,
-              let turn = Stone(rawValue: turnRaw),
-              let round = dict["round"] as? Int,
-              let moveCount = dict["moveCount"] as? Int,
-              let createdBy = dict["createdBy"] as? String else {
+              let status = GameStatus(rawValue: statusRaw) else {
+            return nil
+        }
+        guard let turnRaw = dict["turn"] as? String,
+              let turn = Stone(rawValue: turnRaw) else {
+            return nil
+        }
+        guard let round = dict["round"] as? Int else {
+            return nil
+        }
+        guard let moveCount = dict["moveCount"] as? Int else {
+            return nil
+        }
+        guard let createdBy = dict["createdBy"] as? String else {
             return nil
         }
 

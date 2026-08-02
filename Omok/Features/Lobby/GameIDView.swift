@@ -4,9 +4,8 @@ struct GameIDView: View {
     let uid: String
 
     @AppStorage(PlayerName.storageKey) private var playerName = ""
-    @State private var enteredCode = ""
+    @State private var roomCode = ""
     @State private var selectedGameId: String?
-    @State private var isCreator = false
     @State private var showNicknameSheet = false
 
     var body: some View {
@@ -24,48 +23,41 @@ struct GameIDView: View {
                     Text("Room Code")
                         .font(.subheadline)
                         .foregroundColor(.gray)
-                    TextField("Enter room code", text: $enteredCode)
+                    TextField("Room code", text: $roomCode)
                         .textFieldStyle(.roundedBorder)
+                        .font(.title3)
+                        .fontWeight(.semibold)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                        .onChange(of: enteredCode) { _, newValue in
+                        .monospaced()
+                        .onChange(of: roomCode) { _, newValue in
                             // Force lowercase and alphanumeric only
-                            enteredCode = newValue
+                            roomCode = newValue
                                 .lowercased()
                                 .filter { $0.isLetter || $0.isNumber }
+                                .prefix(5)
+                                .description
                         }
                 }
 
-                HStack(spacing: 12) {
-                    Button(action: {
-                        selectedGameId = generateRandomCode()
-                        isCreator = true
-                    }) {
-                        Text("Create")
-                            .frame(maxWidth: .infinity)
+                Button(action: {
+                    let trimmed = roomCode.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty {
+                        selectedGameId = trimmed
                     }
-                    .buttonStyle(.borderedProminent)
-
-                    Button(action: {
-                        let trimmed = enteredCode.trimmingCharacters(in: .whitespaces)
-                        if !trimmed.isEmpty {
-                            selectedGameId = trimmed
-                            isCreator = false
-                        }
-                    }) {
-                        Text("Join")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(enteredCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                }) {
+                    Text("Join Game")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(roomCode.trimmingCharacters(in: .whitespaces).isEmpty)
 
                 Spacer()
             }
             .padding()
             .navigationDestination(isPresented: .constant(selectedGameId != nil)) {
                 if let gameId = selectedGameId {
-                    GameView(gameId: gameId, isCreator: isCreator, uid: uid, playerName: playerName)
+                    GameView(gameId: gameId, uid: uid, playerName: playerName)
                         .navigationBarBackButtonHidden()
                 }
             }
@@ -81,6 +73,11 @@ struct GameIDView: View {
             .sheet(isPresented: $showNicknameSheet) {
                 NavigationStack {
                     NicknameView(isFirstRun: false)
+                }
+            }
+            .onAppear {
+                if roomCode.isEmpty {
+                    roomCode = generateRandomCode()
                 }
             }
         }

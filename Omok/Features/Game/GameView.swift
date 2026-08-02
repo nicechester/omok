@@ -3,24 +3,20 @@ import Observation
 
 struct GameView: View {
     let gameId: String
-    let isCreator: Bool
     let uid: String
     let playerName: String
 
     @State private var viewModel: GameViewModel
-    @Environment(\.dismiss) var dismiss
 
-    init(gameId: String, isCreator: Bool, uid: String, playerName: String) {
+    init(gameId: String, uid: String, playerName: String) {
         self.gameId = gameId
-        self.isCreator = isCreator
         self.uid = uid
         self.playerName = playerName
         _viewModel = State(initialValue: GameViewModel(
             gameId: gameId,
             uid: uid,
             playerName: playerName,
-            repository: FirebaseGameRepository(),
-            isCreator: isCreator
+            repository: FirebaseGameRepository()
         ))
     }
 
@@ -32,7 +28,8 @@ struct GameView: View {
                     gameId: gameId,
                     statusText: viewModel.statusText,
                     mySeat: viewModel.mySeat,
-                    opponentName: viewModel.opponentName
+                    myName: playerName,
+                    players: viewModel.game?.players ?? [:]
                 )
 
                 // Board
@@ -55,31 +52,6 @@ struct GameView: View {
                         Text("")
                     }
                     .frame(height: 44)
-                }
-            }
-
-            // Waiting for opponent overlay
-            if viewModel.game?.status == .waiting {
-                ZStack {
-                    Color.black.opacity(0.4)
-                        .ignoresSafeArea()
-
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-
-                        VStack(spacing: 8) {
-                            Text("Waiting for opponent")
-                                .font(.headline)
-                            Text("Share code: \(gameId)")
-                                .font(.title2)
-                                .monospaced()
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .padding(24)
-                    .background(Color(.systemBackground))
-                    .cornerRadius(12)
                 }
             }
 
@@ -106,13 +78,6 @@ struct GameView: View {
         .task {
             await viewModel.start()
         }
-        .alert("Game Not Found", isPresented: $viewModel.gameNotFound) {
-            Button("Back", role: .cancel) {
-                dismiss()
-            }
-        } message: {
-            Text("No game found with code \(gameId). Check the code and try again.")
-        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -124,5 +89,5 @@ struct GameView: View {
 }
 
 #Preview {
-    GameView(gameId: "abc12", isCreator: true, uid: "user1", playerName: "Chester")
+    GameView(gameId: "abc12", uid: "user1", playerName: "Chester")
 }

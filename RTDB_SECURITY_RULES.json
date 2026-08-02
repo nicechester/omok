@@ -10,6 +10,22 @@
           "round":     { ".validate": "newData.isNumber() && newData.val() >= 0" },
           "moveCount": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 225" },
           "result":    { ".validate": "newData.val() === 'black' || newData.val() === 'white' || newData.val() === 'draw'" },
+          "createdBy": { ".validate": "newData.isString()" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "updatedAt": { ".validate": "newData.isNumber()" },
+          "lastMove": {
+            ".validate": "newData.hasChildren(['r', 'c', 'color'])",
+            "r":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
+            "c":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
+            "color": { ".validate": "newData.val() === 'black' || newData.val() === 'white'" }
+          },
+          "winningLine": {
+            "$index": {
+              ".validate": "newData.hasChildren(['r', 'c'])",
+              "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
+              "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" }
+            }
+          },
           "board": {
             "$cell": {
               ".validate": "$cell.matches(/^[0-9]{1,2}_[0-9]{1,2}$/) && (newData.val() === 'black' || newData.val() === 'white') && (!data.exists() || data.val() === newData.val())"
