@@ -16,6 +16,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		45237A443020323200FF5852 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		49B68FB861DCBC0298D2ACDA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6B08753164041DCDFE195540 /* Omok.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Omok.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4E2D1E991440A4D828F9253 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -53,6 +54,7 @@
 		76C6BC6B30DD2B9762552587 /* Omok */ = {
 			isa = PBXGroup;
 			children = (
+				45237A443020323200FF5852 /* Info.plist */,
 				E63DB3E3E6ECADD13F207EB5 /* OmokApp.swift */,
 				49B68FB861DCBC0298D2ACDA /* Assets.xcassets */,
 				0B43E0E9481331E6AE7942E3 /* Preview Content */,
@@ -237,6 +239,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Omok/Preview Content\"";
 				DEVELOPMENT_TEAM = K92B539W6W;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Omok/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Omok;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
@@ -333,6 +336,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Omok/Preview Content\"";
 				DEVELOPMENT_TEAM = K92B539W6W;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Omok/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Omok;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;

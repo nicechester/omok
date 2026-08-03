@@ -5,13 +5,16 @@ struct GameView: View {
     let gameId: String
     let uid: String
     let playerName: String
+    var onLeave: (() -> Void)? = nil
 
+    @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
     @State private var viewModel: GameViewModel
 
-    init(gameId: String, uid: String, playerName: String) {
+    init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
+        self.onLeave = onLeave
         _viewModel = State(initialValue: GameViewModel(
             gameId: gameId,
             uid: uid,
@@ -75,7 +78,15 @@ struct GameView: View {
             }
         }
         .navigationBarBackButtonHidden()
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Leave") {
+                    onLeave?()
+                }
+            }
+        }
         .task {
+            recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
             await viewModel.start()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
