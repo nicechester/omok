@@ -21,9 +21,7 @@ struct OmokApp: App {
                             NicknameView(isFirstRun: true)
                         }
                     } else {
-                        NavigationStack {
-                            GameIDView(uid: uid)
-                        }
+                        RootTabView(uid: uid)
                     }
                 } else {
                     ProgressView("Initializing...")

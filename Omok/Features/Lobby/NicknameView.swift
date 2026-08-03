@@ -5,7 +5,6 @@ struct NicknameView: View {
 
     @AppStorage(PlayerName.storageKey) private var storedName = ""
     @State private var draft = ""
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 20) {
@@ -29,7 +28,6 @@ struct NicknameView: View {
 
             Button(action: {
                 storedName = PlayerName.sanitize(draft)
-                dismiss()
             }) {
                 Text("Save")
                     .frame(maxWidth: .infinity)
@@ -41,15 +39,6 @@ struct NicknameView: View {
         }
         .padding()
         .navigationTitle("Nickname")
-        .toolbar {
-            if !isFirstRun {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-            }
-        }
         .onAppear {
             draft = storedName
         }
