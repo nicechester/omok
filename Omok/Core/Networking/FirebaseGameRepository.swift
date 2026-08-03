@@ -53,6 +53,7 @@ final class FirebaseGameRepository: GameRepository {
             "players": [
                 "black": blackSeat
             ],
+            "speaking": [:],
             "createdBy": creatorUid,
             "createdAt": ServerValue.timestamp(),
             "updatedAt": ServerValue.timestamp()
@@ -232,6 +233,42 @@ final class FirebaseGameRepository: GameRepository {
         try await ref.updateChildValues(updates)
     }
 
+    // MARK: - Speaking
+
+    func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws {
+        let ref = gameRef(gameId)
+
+        // Fetch current state to get user's seat
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        let players = dict["players"] as? [String: Any] ?? [:]
+
+        // Find user's seat
+        var userSeat: Stone?
+        for color in [Stone.black, Stone.white] {
+            if let seat = players[color.rawValue] as? [String: Any],
+               seat["uid"] as? String == uid {
+                userSeat = color
+                break
+            }
+        }
+
+        guard let seat = userSeat else {
+            throw GameError.gameNotFound
+        }
+
+        // Update speaking state for this player
+        let updates: [String: Any] = [
+            "speaking/\(seat.rawValue)": isSpeaking,
+            "updatedAt": ServerValue.timestamp()
+        ]
+
+        try await ref.updateChildValues(updates)
+    }
+
     // MARK: - Codec
 
     private static func decodeGameState(from snapshot: DataSnapshot) -> GameState? {
@@ -310,6 +347,17 @@ final class FirebaseGameRepository: GameRepository {
             rematchVotes = Set(rematchDict.keys)
         }
 
+        var speaking: [Stone: Bool] = [:]
+        if let speakingDict = dict["speaking"] as? [String: Any] {
+            for (colorKey, value) in speakingDict {
+                guard let color = Stone(rawValue: colorKey),
+                      let isSpeaking = value as? Bool else {
+                    continue
+                }
+                speaking[color] = isSpeaking
+            }
+        }
+
         return GameState(
             status: status,
             turn: turn,
@@ -321,7 +369,8 @@ final class FirebaseGameRepository: GameRepository {
             winningLine: winningLine,
             players: players,
             rematchVotes: rematchVotes,
-            createdBy: createdBy
+            createdBy: createdBy,
+            speaking: speaking
         )
     }
 }

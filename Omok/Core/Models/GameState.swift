@@ -45,6 +45,7 @@ struct GameState: Sendable {
     let players: [Stone: PlayerSeat]
     let rematchVotes: Set<String>
     let createdBy: String
+    let speaking: [Stone: Bool]
 
     func seat(of uid: String) -> Stone? {
         for (color, seat) in players {

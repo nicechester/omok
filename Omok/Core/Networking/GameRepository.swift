@@ -7,6 +7,7 @@ protocol GameRepository {
     func placeStone(gameId: String, at cell: Cell, uid: String) async throws
     func voteRematch(gameId: String, uid: String) async throws
     func resetForRematch(gameId: String) async throws
+    func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws
 }
 
 enum GameError: LocalizedError {

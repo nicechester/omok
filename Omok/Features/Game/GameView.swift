@@ -1,5 +1,18 @@
 import SwiftUI
 import Observation
+import AVFoundation
+import GroupActivities
+
+struct VoiceChatActivity: GroupActivity {
+    static let activityIdentifier = "io.github.nicechester.omok.voicechat"
+
+    var metadata: GroupActivityMetadata {
+        var meta = GroupActivityMetadata()
+        meta.title = "Omok Voice Chat"
+        meta.type = .generic
+        return meta
+    }
+}
 
 struct GameView: View {
     let gameId: String
@@ -10,6 +23,9 @@ struct GameView: View {
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
     @State private var viewModel: GameViewModel
     @State private var showExitConfirmation = false
+    @State private var isMicEnabled = false
+    @State private var isSpeaking = false
+    @State private var opponentSpeaking = false
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
@@ -22,6 +38,29 @@ struct GameView: View {
             playerName: playerName,
             repository: FirebaseGameRepository()
         ))
+    }
+
+    private func toggleMicrophone() {
+        if !isMicEnabled {
+            AVAudioApplication.requestRecordPermission { granted in
+                if granted {
+                    isMicEnabled = true
+                }
+            }
+        } else {
+            isMicEnabled = false
+            isSpeaking = false
+        }
+    }
+
+    private func startVoiceChat() {
+        Task {
+            do {
+                try await VoiceChatActivity().activate()
+            } catch {
+                print("Failed to activate voice chat: \(error)")
+            }
+        }
     }
 
     var body: some View {
@@ -52,10 +91,37 @@ struct GameView: View {
 
                 // Actions
                 if viewModel.game?.status != .finished {
-                    HStack {
-                        Text("")
+                    VStack(spacing: 8) {
+                        // Talking indicator
+                        if isSpeaking || opponentSpeaking {
+                            HStack(spacing: 4) {
+                                ForEach(0..<3, id: \.self) { index in
+                                    Capsule()
+                                        .fill(Color.blue.opacity(0.6))
+                                        .frame(width: 2, height: CGFloat(8 + (index * 4)))
+                                        .animation(
+                                            Animation.easeInOut(duration: 0.6)
+                                                .repeatForever(autoreverses: true)
+                                                .delay(Double(index) * 0.1),
+                                            value: isSpeaking || opponentSpeaking
+                                        )
+                                }
+                            }
+                            .frame(height: 20)
+                        }
+
+                        HStack(spacing: 16) {
+                            Button(action: toggleMicrophone) {
+                                Image(systemName: isMicEnabled ? "mic.fill" : "mic.slash.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(isMicEnabled ? .blue : .gray)
+                            }
+
+                            Spacer()
+                        }
+                        .frame(height: 44)
                     }
-                    .frame(height: 44)
+                    .padding(.horizontal)
                 }
             }
 
@@ -106,6 +172,19 @@ struct GameView: View {
         .task {
             recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
             await viewModel.start()
+        }
+        .onChange(of: viewModel.game?.status) { oldStatus, newStatus in
+            if newStatus == .playing && viewModel.game?.players.count == 2 {
+                startVoiceChat()
+            }
+        }
+        .onChange(of: viewModel.game?.speaking) { _, newSpeaking in
+            // Update opponent speaking state
+            if let mySeat = viewModel.mySeat,
+               let opponentSeat = (mySeat == .black ? Stone.white : Stone.black),
+               let isOpponentSpeaking = newSpeaking?[opponentSeat] {
+                opponentSpeaking = isOpponentSpeaking
+            }
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
