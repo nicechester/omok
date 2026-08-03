@@ -1,18 +1,8 @@
 import SwiftUI
+import SwiftUI
 import Observation
 import AVFoundation
-import GroupActivities
-
-struct VoiceChatActivity: GroupActivity {
-    static let activityIdentifier = "io.github.nicechester.omok.voicechat"
-
-    var metadata: GroupActivityMetadata {
-        var meta = GroupActivityMetadata()
-        meta.title = "Omok Voice Chat"
-        meta.type = .generic
-        return meta
-    }
-}
+import Combine
 
 struct GameView: View {
     let gameId: String
@@ -28,10 +18,17 @@ struct GameView: View {
     @State private var opponentSpeaking = false
     @State private var vadDetector = VoiceActivityDetector()
     @State private var audioEngine = AudioEngine()
+    @State private var audioMessenger: AudioMessenger
+    @State private var audioPlaybackEngine = AudioPlaybackEngine()
     @State private var audioLevel: Float = 0
     @State private var audioSamples: [Float] = []
+    @State private var opponentAudioSamples: [Float] = []
+    @State private var isReceivingOpponentAudio = false
     @State private var audioLevelCancellable: AnyCancellable?
     @State private var audioSamplesCancellable: AnyCancellable?
+    @State private var rawSamplesCancellable: AnyCancellable?
+    @State private var playbackSamplesCancellable: AnyCancellable?
+    @State private var receivingAudioCancellable: AnyCancellable?
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
@@ -44,11 +41,12 @@ struct GameView: View {
             playerName: playerName,
             repository: FirebaseGameRepository()
         ))
+        _audioMessenger = State(initialValue: AudioMessenger(gameId: gameId, uid: uid))
     }
 
     private func toggleMicrophone() {
         if !isMicEnabled {
-            AVAudioApplication.requestRecordPermission { granted in
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
                 if granted {
                     isMicEnabled = true
                     startAudioCapture()
@@ -66,14 +64,24 @@ struct GameView: View {
                 try await audioEngine.startCapture()
 
                 audioLevelCancellable = await audioEngine.audioLevelPublisher
-                    .sink { [weak self] level in
-                        self?.audioLevel = level
-                        self?.processAudioLevel(level)
+                    .receive(on: DispatchQueue.main)
+                    .sink { level in
+                        audioLevel = level
+                        processAudioLevel(level)
                     }
 
                 audioSamplesCancellable = await audioEngine.audioSamplesPublisher
-                    .sink { [weak self] samples in
-                        self?.audioSamples = samples
+                    .receive(on: DispatchQueue.main)
+                    .sink { samples in
+                        audioSamples = samples
+                    }
+                
+                // rawSamplesPublisher is nonisolated, no await needed
+                rawSamplesCancellable = audioEngine.rawSamplesPublisher
+                    .sink { rawSamples in
+                        Task {
+                            await audioMessenger.send(rawSamples: rawSamples)
+                        }
                     }
             } catch {
                 print("Failed to start audio capture: \(error)")
@@ -88,6 +96,7 @@ struct GameView: View {
                 try await audioEngine.stopCapture()
                 audioLevelCancellable?.cancel()
                 audioSamplesCancellable?.cancel()
+                rawSamplesCancellable?.cancel()
                 audioLevel = 0
                 audioSamples = []
                 await updateSpeakingState(false)
@@ -116,85 +125,115 @@ struct GameView: View {
     private func startVoiceChat() {
         Task {
             do {
-                try await VoiceChatActivity().activate()
+                // Start playback engine
+                try await audioPlaybackEngine.start()
+
+                // Subscribe to playback engine's audio publishers (nonisolated, no await needed)
+                playbackSamplesCancellable = audioPlaybackEngine.audioSamplesPublisher
+                    .receive(on: DispatchQueue.main)
+                    .sink { samples in
+                        opponentAudioSamples = samples
+                    }
+
+                receivingAudioCancellable = audioPlaybackEngine.isReceivingAudioPublisher
+                    .receive(on: DispatchQueue.main)
+                    .sink { isReceiving in
+                        isReceivingOpponentAudio = isReceiving
+                    }
+
+                // Start receiving incoming audio frames from Firebase
+                Task {
+                    for await frame in await audioMessenger.incomingFrames {
+                        await audioPlaybackEngine.enqueue(frame)
+                    }
+                }
+
+                print("Voice chat session initiated via Firebase")
             } catch {
                 print("Failed to activate voice chat: \(error)")
             }
         }
     }
 
+    @ViewBuilder
+    private var actionsSection: some View {
+        if viewModel.game?.status != .finished {
+            VStack(spacing: 8) {
+                if isMicEnabled || opponentSpeaking {
+                    WaveformView(
+                        localSamples: audioSamples,
+                        opponentSamples: opponentAudioSamples,
+                        isLocalActive: isSpeaking,
+                        isOpponentActive: opponentSpeaking
+                    )
+                    .frame(height: 40)
+                }
+
+                HStack(spacing: 16) {
+                    Button(action: toggleMicrophone) {
+                        Image(systemName: isMicEnabled ? "mic.fill" : "mic.slash.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(isMicEnabled ? .blue : .gray)
+                    }
+                    Spacer()
+                }
+                .frame(height: 44)
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            GameStatusBar(
+                gameId: gameId,
+                statusText: viewModel.statusText,
+                mySeat: viewModel.mySeat,
+                myName: playerName,
+                players: viewModel.game?.players ?? [:]
+            )
+
+            BoardView(
+                gameState: viewModel.game,
+                canPlay: viewModel.canPlay,
+                onTap: { cell in
+                    Task {
+                        await viewModel.place(cell)
+                    }
+                }
+            )
+            .padding()
+
+            Spacer()
+            actionsSection
+        }
+    }
+
+    @ViewBuilder
+    private var resultOverlay: some View {
+        if viewModel.game?.status == .finished {
+            VStack {
+                Spacer()
+                ResultBanner(
+                    result: viewModel.game?.result,
+                    isSpectator: viewModel.isSpectator,
+                    isMyWin: viewModel.isMyWin,
+                    didVoteRematch: viewModel.didVoteRematch,
+                    onRematchTapped: {
+                        Task {
+                            await viewModel.requestRematch()
+                        }
+                    }
+                )
+                Spacer()
+            }
+        }
+    }
+
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                // Status bar
-                GameStatusBar(
-                    gameId: gameId,
-                    statusText: viewModel.statusText,
-                    mySeat: viewModel.mySeat,
-                    myName: playerName,
-                    players: viewModel.game?.players ?? [:]
-                )
-
-                // Board
-                BoardView(
-                    gameState: viewModel.game,
-                    canPlay: viewModel.canPlay,
-                    onTap: { cell in
-                        Task {
-                            await viewModel.place(cell)
-                        }
-                    }
-                )
-                .padding()
-
-                Spacer()
-
-                // Actions
-                if viewModel.game?.status != .finished {
-                    VStack(spacing: 8) {
-                        // Waveform visualization
-                        if isMicEnabled || opponentSpeaking {
-                            WaveformView(
-                                samples: audioSamples,
-                                isLocalActive: isSpeaking,
-                                isOpponentActive: opponentSpeaking
-                            )
-                            .frame(height: 40)
-                        }
-
-                        HStack(spacing: 16) {
-                            Button(action: toggleMicrophone) {
-                                Image(systemName: isMicEnabled ? "mic.fill" : "mic.slash.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundColor(isMicEnabled ? .blue : .gray)
-                            }
-
-                            Spacer()
-                        }
-                        .frame(height: 44)
-                    }
-                    .padding(.horizontal)
-                }
-            }
-
-            // Result banner
-            if viewModel.game?.status == .finished {
-                VStack {
-                    Spacer()
-                    ResultBanner(
-                        result: viewModel.game?.result,
-                        isSpectator: viewModel.isSpectator,
-                        isMyWin: viewModel.isMyWin,
-                        didVoteRematch: viewModel.didVoteRematch,
-                        onRematchTapped: {
-                            Task {
-                                await viewModel.requestRematch()
-                            }
-                        }
-                    )
-                    Spacer()
-                }
-            }
+            mainContent
+            resultOverlay
         }
         .navigationBarBackButtonHidden()
         .toolbar {
@@ -221,37 +260,61 @@ struct GameView: View {
         } message: {
             Text("You'll stay in the game and can rejoin by entering the room code again.")
         }
-        .task {
-            recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
-            await viewModel.start()
-        }
-        .onChange(of: viewModel.game?.status) { oldStatus, newStatus in
-            if newStatus == .playing && viewModel.game?.players.count == 2 {
-                startVoiceChat()
-            } else if newStatus == .finished {
-                if isMicEnabled {
-                    stopAudioCapture()
-                    isMicEnabled = false
-                }
-                Task {
-                    await updateSpeakingState(false)
-                }
-            }
-        }
-        .onChange(of: viewModel.game?.speaking) { _, newSpeaking in
-            // Update opponent speaking state
-            if let mySeat = viewModel.mySeat,
-               let opponentSeat = (mySeat == .black ? Stone.white : Stone.black),
-               let isOpponentSpeaking = newSpeaking?[opponentSeat] {
-                opponentSpeaking = isOpponentSpeaking
-            }
-        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
             }
         } message: {
             Text(viewModel.errorMessage ?? "An error occurred.")
+        }
+        .task {
+            await audioMessenger.startObservingSessions()
+            recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
+            await viewModel.start()
+        }
+        .onDisappear {
+            handleDisappear()
+        }
+        .onChange(of: viewModel.game?.status) { _, newStatus in
+            handleStatusChange(newStatus)
+        }
+        .onChange(of: viewModel.game?.speaking) { _, newSpeaking in
+            if let mySeat = viewModel.mySeat {
+                let opponentSeat = (mySeat == .black ? Stone.white : Stone.black)
+                if let isOpponentSpeaking = newSpeaking?[opponentSeat] {
+                    opponentSpeaking = isOpponentSpeaking
+                }
+            }
+        }
+    }
+
+    private func handleDisappear() {
+        Task {
+            await audioMessenger.cleanup()
+            if isMicEnabled {
+                try? await audioEngine.stopCapture()
+            }
+            try? await audioPlaybackEngine.stop()
+            await updateSpeakingState(false)
+        }
+        audioLevelCancellable?.cancel()
+        audioSamplesCancellable?.cancel()
+        rawSamplesCancellable?.cancel()
+        playbackSamplesCancellable?.cancel()
+        receivingAudioCancellable?.cancel()
+    }
+
+    private func handleStatusChange(_ newStatus: GameStatus?) {
+        if newStatus == .playing && viewModel.game?.players.count == 2 {
+            startVoiceChat()
+        } else if newStatus == .finished {
+            if isMicEnabled {
+                stopAudioCapture()
+                isMicEnabled = false
+            }
+            Task {
+                await updateSpeakingState(false)
+            }
         }
     }
 }
