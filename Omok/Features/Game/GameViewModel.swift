@@ -166,4 +166,12 @@ final class GameViewModel {
             errorMessage = error.localizedDescription
         }
     }
+
+    func updateSpeaking(_ isSpeaking: Bool) async {
+        do {
+            try await repository.updateSpeaking(gameId: gameId, uid: uid, isSpeaking: isSpeaking)
+        } catch {
+            print("Failed to update speaking state: \(error)")
+        }
+    }
 }
