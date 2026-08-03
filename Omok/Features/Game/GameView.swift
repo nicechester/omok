@@ -9,6 +9,7 @@ struct GameView: View {
 
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
     @State private var viewModel: GameViewModel
+    @State private var showExitConfirmation = false
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
@@ -80,10 +81,27 @@ struct GameView: View {
         .navigationBarBackButtonHidden()
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Leave") {
-                    onLeave?()
+                let isWaiting = viewModel.game?.status == .waiting && viewModel.mySeat == nil
+                let buttonText = isWaiting ? "Cancel" : "Leave"
+
+                Button(buttonText) {
+                    if viewModel.game?.status == .finished {
+                        onLeave?()
+                    } else if isWaiting {
+                        onLeave?()
+                    } else {
+                        showExitConfirmation = true
+                    }
                 }
             }
+        }
+        .alert("Leave Game?", isPresented: $showExitConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Leave", role: .destructive) {
+                onLeave?()
+            }
+        } message: {
+            Text("You'll stay in the game and can rejoin by entering the room code again.")
         }
         .task {
             recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
