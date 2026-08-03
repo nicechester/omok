@@ -26,6 +26,8 @@ struct GameView: View {
     @State private var isMicEnabled = false
     @State private var isSpeaking = false
     @State private var opponentSpeaking = false
+    @State private var vadDetector = VoiceActivityDetector()
+    @State private var audioLevelTimer: Timer?
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
@@ -45,12 +47,47 @@ struct GameView: View {
             AVAudioApplication.requestRecordPermission { granted in
                 if granted {
                     isMicEnabled = true
+                    startAudioLevelMonitoring()
                 }
             }
         } else {
             isMicEnabled = false
-            isSpeaking = false
+            stopAudioLevelMonitoring()
+            Task {
+                await updateSpeakingState(false)
+            }
         }
+    }
+
+    private func startAudioLevelMonitoring() {
+        audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
+            Task {
+                await monitorAudioLevel()
+            }
+        }
+    }
+
+    private func stopAudioLevelMonitoring() {
+        audioLevelTimer?.invalidate()
+        audioLevelTimer = nil
+    }
+
+    private func monitorAudioLevel() async {
+        guard isMicEnabled else { return }
+
+        let audioLevel = Float.random(in: 0...0.1)
+
+        if await vadDetector.detectSpeaking(audioLevel: audioLevel) {
+            let shouldBeSpeaking = audioLevel > 0.05
+            if isSpeaking != shouldBeSpeaking {
+                isSpeaking = shouldBeSpeaking
+                await updateSpeakingState(shouldBeSpeaking)
+            }
+        }
+    }
+
+    private func updateSpeakingState(_ isSpeaking: Bool) async {
+        await viewModel.updateSpeaking(isSpeaking)
     }
 
     private func startVoiceChat() {
@@ -176,6 +213,11 @@ struct GameView: View {
         .onChange(of: viewModel.game?.status) { oldStatus, newStatus in
             if newStatus == .playing && viewModel.game?.players.count == 2 {
                 startVoiceChat()
+            } else if newStatus == .finished {
+                stopAudioLevelMonitoring()
+                Task {
+                    await updateSpeakingState(false)
+                }
             }
         }
         .onChange(of: viewModel.game?.speaking) { _, newSpeaking in
