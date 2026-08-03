@@ -119,10 +119,11 @@ struct BoardView: View {
             .white: PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina")
         ],
         rematchVotes: [],
-        createdBy: "user1"
+        createdBy: "user1",
+        speaking: [:]
     )
 
-    return BoardView(
+    BoardView(
         gameState: state,
         canPlay: true,
         onTap: { cell in print("Tapped: \(cell)") }
