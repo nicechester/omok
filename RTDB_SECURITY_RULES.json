@@ -1,6 +1,20 @@
 {
   "rules": {
     "omok": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "audio": {
+        "$gameId": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "$uid": {
+            ".write": "$uid === auth.uid",
+            "$sequence": {
+              ".validate": "newData.hasChildren(['sequence', 'samples', 'timestamp']) && newData.child('sequence').isNumber() && newData.child('timestamp').isNumber()"
+            }
+          }
+        }
+      },
       "games": {
         "$gameId": {
           ".read": "auth != null",

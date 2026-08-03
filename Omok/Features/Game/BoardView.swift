@@ -99,11 +99,12 @@ struct BoardView: View {
 }
 
 #Preview {
-    var board: [Cell: Stone] = [:]
-    board[Cell(r: 7, c: 7)] = .black
-    board[Cell(r: 7, c: 8)] = .white
-    board[Cell(r: 8, c: 7)] = .black
-    board[Cell(r: 8, c: 8)] = .white
+    let board: [Cell: Stone] = [
+        Cell(r: 7, c: 7): .black,
+        Cell(r: 7, c: 8): .white,
+        Cell(r: 8, c: 7): .black,
+        Cell(r: 8, c: 8): .white
+    ]
 
     let state = GameState(
         status: .playing,
