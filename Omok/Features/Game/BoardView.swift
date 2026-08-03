@@ -99,8 +99,31 @@ struct BoardView: View {
 }
 
 #Preview {
-    BoardView(
-        gameState: FakeGameRepository.previewState(),
+    var board: [Cell: Stone] = [:]
+    board[Cell(r: 7, c: 7)] = .black
+    board[Cell(r: 7, c: 8)] = .white
+    board[Cell(r: 8, c: 7)] = .black
+    board[Cell(r: 8, c: 8)] = .white
+
+    let state = GameState(
+        status: .playing,
+        turn: .black,
+        round: 0,
+        moveCount: 4,
+        board: board,
+        lastMove: LastMove(r: 8, c: 8, color: .white),
+        result: nil,
+        winningLine: nil,
+        players: [
+            .black: PlayerSeat(uid: "user1", joinedAt: 0, name: "Chester"),
+            .white: PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina")
+        ],
+        rematchVotes: [],
+        createdBy: "user1"
+    )
+
+    return BoardView(
+        gameState: state,
         canPlay: true,
         onTap: { cell in print("Tapped: \(cell)") }
     )
