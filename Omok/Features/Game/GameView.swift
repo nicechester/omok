@@ -27,7 +27,11 @@ struct GameView: View {
     @State private var isSpeaking = false
     @State private var opponentSpeaking = false
     @State private var vadDetector = VoiceActivityDetector()
-    @State private var audioLevelTimer: Timer?
+    @State private var audioEngine = AudioEngine()
+    @State private var audioLevel: Float = 0
+    @State private var audioSamples: [Float] = []
+    @State private var audioLevelCancellable: AnyCancellable?
+    @State private var audioSamplesCancellable: AnyCancellable?
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
@@ -47,41 +51,60 @@ struct GameView: View {
             AVAudioApplication.requestRecordPermission { granted in
                 if granted {
                     isMicEnabled = true
-                    startAudioLevelMonitoring()
+                    startAudioCapture()
                 }
             }
         } else {
             isMicEnabled = false
-            stopAudioLevelMonitoring()
-            Task {
+            stopAudioCapture()
+        }
+    }
+
+    private func startAudioCapture() {
+        Task {
+            do {
+                try await audioEngine.startCapture()
+
+                audioLevelCancellable = await audioEngine.audioLevelPublisher
+                    .sink { [weak self] level in
+                        self?.audioLevel = level
+                        self?.processAudioLevel(level)
+                    }
+
+                audioSamplesCancellable = await audioEngine.audioSamplesPublisher
+                    .sink { [weak self] samples in
+                        self?.audioSamples = samples
+                    }
+            } catch {
+                print("Failed to start audio capture: \(error)")
+                isMicEnabled = false
+            }
+        }
+    }
+
+    private func stopAudioCapture() {
+        Task {
+            do {
+                try await audioEngine.stopCapture()
+                audioLevelCancellable?.cancel()
+                audioSamplesCancellable?.cancel()
+                audioLevel = 0
+                audioSamples = []
                 await updateSpeakingState(false)
+            } catch {
+                print("Failed to stop audio capture: \(error)")
             }
         }
     }
 
-    private func startAudioLevelMonitoring() {
-        audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
-            Task {
-                await monitorAudioLevel()
-            }
-        }
-    }
-
-    private func stopAudioLevelMonitoring() {
-        audioLevelTimer?.invalidate()
-        audioLevelTimer = nil
-    }
-
-    private func monitorAudioLevel() async {
-        guard isMicEnabled else { return }
-
-        let audioLevel = Float.random(in: 0...0.1)
-
-        if await vadDetector.detectSpeaking(audioLevel: audioLevel) {
-            let shouldBeSpeaking = audioLevel > 0.05
-            if isSpeaking != shouldBeSpeaking {
-                isSpeaking = shouldBeSpeaking
-                await updateSpeakingState(shouldBeSpeaking)
+    private func processAudioLevel(_ level: Float) {
+        Task {
+            if await vadDetector.detectSpeaking(audioLevel: level) {
+                let shouldBeSpeaking = level > 0.05
+                if isSpeaking != shouldBeSpeaking {
+                    isSpeaking = shouldBeSpeaking
+                    await updateSpeakingState(shouldBeSpeaking)
+                }
             }
         }
     }
@@ -129,22 +152,14 @@ struct GameView: View {
                 // Actions
                 if viewModel.game?.status != .finished {
                     VStack(spacing: 8) {
-                        // Talking indicator
-                        if isSpeaking || opponentSpeaking {
-                            HStack(spacing: 4) {
-                                ForEach(0..<3, id: \.self) { index in
-                                    Capsule()
-                                        .fill(Color.blue.opacity(0.6))
-                                        .frame(width: 2, height: CGFloat(8 + (index * 4)))
-                                        .animation(
-                                            Animation.easeInOut(duration: 0.6)
-                                                .repeatForever(autoreverses: true)
-                                                .delay(Double(index) * 0.1),
-                                            value: isSpeaking || opponentSpeaking
-                                        )
-                                }
-                            }
-                            .frame(height: 20)
+                        // Waveform visualization
+                        if isMicEnabled || opponentSpeaking {
+                            WaveformView(
+                                samples: audioSamples,
+                                isLocalActive: isSpeaking,
+                                isOpponentActive: opponentSpeaking
+                            )
+                            .frame(height: 40)
                         }
 
                         HStack(spacing: 16) {
@@ -214,7 +229,10 @@ struct GameView: View {
             if newStatus == .playing && viewModel.game?.players.count == 2 {
                 startVoiceChat()
             } else if newStatus == .finished {
-                stopAudioLevelMonitoring()
+                if isMicEnabled {
+                    stopAudioCapture()
+                    isMicEnabled = false
+                }
                 Task {
                     await updateSpeakingState(false)
                 }
