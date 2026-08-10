@@ -78,7 +78,7 @@ final class GameViewModel {
     }
 
     private func notifyIfNeeded(_ state: GameState?, previous: GameState?) {
-        guard !isSpectator, let backgroundedAt else { return }
+        guard !isSpectator, let backgroundedAt, let state else { return }
 
         let now = Date()
         if let lastNotificationTime, now.timeIntervalSince(lastNotificationTime) < 5 {
@@ -88,8 +88,12 @@ final class GameViewModel {
         Task {
             let notificationManager = NotificationManager.shared
 
-            // Notify on new opponent move
-            if let lastMove = state?.lastMove, lastMove.color != mySeat {
+            // Check if opponent is still in the game
+            let opponentSeat = mySeat?.opposite
+            let opponentStillSeated = opponentSeat.map { state.players[$0] != nil } ?? false
+
+            // Notify on new opponent move (only if opponent still seated)
+            if opponentStillSeated, let lastMove = state.lastMove, lastMove.color != mySeat {
                 if previous?.lastMove?.r != lastMove.r || previous?.lastMove?.c != lastMove.c {
                     let name = opponentName ?? "Opponent"
                     await notificationManager.scheduleGameNotification(
@@ -103,18 +107,20 @@ final class GameViewModel {
             }
 
             // Notify on game finish
-            if state?.status == .finished, previous?.status != .finished {
-                if let result = state?.result {
+            if state.status == .finished, previous?.status != .finished {
+                if let result = state.result {
                     let body: String
-                    let name = opponentName ?? "Opponent"
                     switch result {
                     case .draw:
                         body = "Game is a draw"
                     case .black, .white:
                         if let mySeat, Stone(rawValue: result.rawValue) == mySeat {
                             body = "You won"
-                        } else {
+                        } else if opponentStillSeated {
+                            let name = opponentName ?? "Opponent"
                             body = "\(name) won the game"
+                        } else {
+                            body = "Opponent abandoned"
                         }
                     }
                     await notificationManager.scheduleGameNotification(

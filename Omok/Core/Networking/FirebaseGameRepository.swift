@@ -40,7 +40,8 @@ final class FirebaseGameRepository: GameRepository {
         let sanitizedName = PlayerName.sanitize(creatorName)
         var blackSeat: [String: Any] = [
             "uid": creatorUid,
-            "joinedAt": ServerValue.timestamp()
+            "joinedAt": ServerValue.timestamp(),
+            "active": true
         ]
         if !sanitizedName.isEmpty {
             blackSeat["name"] = sanitizedName
@@ -100,7 +101,8 @@ final class FirebaseGameRepository: GameRepository {
         let seatColor: Stone = blackTaken ? .white : .black
         var newSeat: [String: Any] = [
             "uid": uid,
-            "joinedAt": ServerValue.timestamp()
+            "joinedAt": ServerValue.timestamp(),
+            "active": true
         ]
         if !sanitizedName.isEmpty {
             newSeat["name"] = sanitizedName
@@ -230,13 +232,14 @@ final class FirebaseGameRepository: GameRepository {
         
         // Winner is the opponent
         let winner = forfeitingSeat.opposite
-        
+
         let updates: [String: Any] = [
             "status": GameStatus.finished.rawValue,
             "result": winner.rawValue,
+            "players/\(forfeitingSeat.rawValue)/active": false,
             "updatedAt": ServerValue.timestamp()
         ]
-        
+
         try await ref.updateChildValues(updates)
     }
 

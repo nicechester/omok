@@ -72,13 +72,20 @@ struct GameStatusBar: View {
                     .lineLimit(1)
                     .fontWeight(.semibold)
             }
-            // Show opponent's name from game state
+            // Show opponent's name from game state, with disconnected status if inactive
             else if let seat = players[color], let name = seat.displayName, !name.isEmpty {
-                Text(name)
-                    .font(.caption2)
-                    .lineLimit(1)
+                if seat.active == false {
+                    Text("\(name) (disconnected)")
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .foregroundColor(.gray)
+                } else {
+                    Text(name)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
             }
-            // Waiting for opponent
+            // Waiting for opponent (seat is empty)
             else {
                 Text("Waiting…")
                     .font(.caption2)

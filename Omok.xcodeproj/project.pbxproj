@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 73;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -24,18 +24,8 @@
 		F82C6B1D4A93E5078D2C7F35 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		4578EDE7302A402F006E4DF4 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = D77D725C10C1635B3285C78C /* Sources */;
-			membershipExceptions = (
-				Notifications/NotificationManager.swift,
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		45427ADB1C5CD8F76596A841 /* Core */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (4578EDE7302A402F006E4DF4 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Core; sourceTree = "<group>"; };
+		45427ADB1C5CD8F76596A841 /* Core */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Core; sourceTree = "<group>"; };
 		7B55057D10E77D17803EEE36 /* Features */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Features; sourceTree = "<group>"; };
 		FBA71F87EC8F6EE88A38AF58 /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Shared; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -137,6 +127,7 @@
 				};
 			};
 			buildConfigurationList = 788C910FBD21BA405027D885 /* Build configuration list for PBXProject "Omok" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -147,7 +138,6 @@
 			packageReferences = (
 				4F636992DC69339337EEBD70 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
-			preferredProjectObjectVersion = 56;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

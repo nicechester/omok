@@ -16,6 +16,7 @@ struct PlayerSeat: Codable, Sendable {
     let uid: String
     let joinedAt: Int
     let name: String?
+    let active: Bool?
 
     var displayName: String? {
         let sanitized = PlayerName.sanitize(name ?? "")
