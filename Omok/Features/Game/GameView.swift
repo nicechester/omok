@@ -10,6 +10,7 @@ struct GameView: View {
     let playerName: String
     var onLeave: (() -> Void)? = nil
 
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
     @State private var viewModel: GameViewModel
     @State private var showExitConfirmation = false
@@ -298,6 +299,13 @@ struct GameView: View {
             await audioMessenger.startObservingSessions()
             recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
             await viewModel.start()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                viewModel.appDidEnterBackground()
+            } else if newPhase == .active {
+                viewModel.appDidBecomeActive()
+            }
         }
         .onDisappear {
             handleDisappear()

@@ -1,5 +1,6 @@
 import SwiftUI
 import Firebase
+import UserNotifications
 
 @main
 struct OmokApp: App {
@@ -23,10 +24,19 @@ struct OmokApp: App {
                         }
                     } else {
                         RootTabView(uid: uid, pendingGameCode: $pendingGameCode)
+                            .task {
+                                // Check for pending game ID from notification
+                                if let gameId = NotificationManager.shared.pendingGameId {
+                                    pendingGameCode = gameId
+                                    NotificationManager.shared.pendingGameId = nil
+                                }
+                            }
                     }
                 } else {
                     ProgressView("Initializing...")
                         .task {
+                            // Initialize NotificationManager on the main actor
+                            _ = NotificationManager.shared
                             try? await authService.signInAnonymously()
                             isInitialized = true
                         }
@@ -34,6 +44,11 @@ struct OmokApp: App {
             }
             .onOpenURL { url in
                 handleDeepLink(url)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("omokOpenGame"))) { notification in
+                if let gameId = notification.userInfo?["gameId"] as? String {
+                    pendingGameCode = gameId
+                }
             }
         }
     }

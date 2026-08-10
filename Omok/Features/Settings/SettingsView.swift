@@ -1,8 +1,48 @@
 import SwiftUI
+import UserNotifications
 
 struct SettingsView: View {
+    @AppStorage(NotificationSettings.storageKey) private var notificationsEnabled = true
+    @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
+
     var body: some View {
-        NicknameView(isFirstRun: false)
+        NavigationStack {
+            List {
+                Section("Notifications") {
+                    Toggle("Notifications", isOn: $notificationsEnabled)
+                        .onChange(of: notificationsEnabled) { _, newValue in
+                            if newValue {
+                                Task {
+                                    _ = await NotificationManager.shared.requestAuthorization()
+                                    await updateAuthorizationStatus()
+                                }
+                            }
+                        }
+                    if authorizationStatus == .denied {
+                        Label(
+                            "Off in iOS Settings",
+                            systemImage: "exclamationmark.circle.fill"
+                        )
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                    }
+                }
+
+                Section {
+                    NicknameView(isFirstRun: false)
+                }
+            }
+            .onAppear {
+                Task {
+                    await updateAuthorizationStatus()
+                }
+            }
+        }
+    }
+
+    private func updateAuthorizationStatus() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        authorizationStatus = settings.authorizationStatus
     }
 }
 

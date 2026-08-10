@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import AudioToolbox
+import UIKit
 
 @Observable
 @MainActor
@@ -15,6 +16,8 @@ final class GameViewModel {
     private let uid: String
     private let playerName: String
     private let repository: GameRepository
+    private var backgroundedAt: Date?
+    private var lastNotificationTime: Date?
     // A plain (non-actor-isolated) box so `deinit` — which runs nonisolated —
     // can cancel the listening task without touching a MainActor-isolated
     // stored property directly.
@@ -27,12 +30,102 @@ final class GameViewModel {
         get { listenTaskBox.task }
         set { listenTaskBox.task = newValue }
     }
+    
+    // A plain (non-actor-isolated) box for background task identifier
+    private final class BackgroundTaskBox {
+        var identifier: UIBackgroundTaskIdentifier = .invalid
+    }
+    private let backgroundTaskBox = BackgroundTaskBox()
+    private var backgroundTask: UIBackgroundTaskIdentifier {
+        get { backgroundTaskBox.identifier }
+        set { backgroundTaskBox.identifier = newValue }
+    }
 
     init(gameId: String, uid: String, playerName: String, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
         self.repository = repository
+    }
+
+    deinit {
+        endBackgroundTask()
+    }
+
+    // MARK: - Background lifecycle
+
+    func appDidEnterBackground() {
+        backgroundedAt = Date()
+        beginBackgroundTask()
+    }
+
+    func appDidBecomeActive() {
+        backgroundedAt = nil
+        endBackgroundTask()
+    }
+
+    private func beginBackgroundTask() {
+        backgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
+            self?.endBackgroundTask()
+        }
+    }
+
+    nonisolated private func endBackgroundTask() {
+        if backgroundTaskBox.identifier != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskBox.identifier)
+            backgroundTaskBox.identifier = .invalid
+        }
+    }
+
+    private func notifyIfNeeded(_ state: GameState?, previous: GameState?) {
+        guard !isSpectator, let backgroundedAt else { return }
+
+        let now = Date()
+        if let lastNotificationTime, now.timeIntervalSince(lastNotificationTime) < 5 {
+            return
+        }
+
+        Task {
+            let notificationManager = NotificationManager.shared
+
+            // Notify on new opponent move
+            if let lastMove = state?.lastMove, lastMove.color != mySeat {
+                if previous?.lastMove?.r != lastMove.r || previous?.lastMove?.c != lastMove.c {
+                    let name = opponentName ?? "Opponent"
+                    await notificationManager.scheduleGameNotification(
+                        gameId: gameId,
+                        title: "Room \(gameId.uppercased())",
+                        body: "\(name) made a move"
+                    )
+                    lastNotificationTime = now
+                    return
+                }
+            }
+
+            // Notify on game finish
+            if state?.status == .finished, previous?.status != .finished {
+                if let result = state?.result {
+                    let body: String
+                    let name = opponentName ?? "Opponent"
+                    switch result {
+                    case .draw:
+                        body = "Game is a draw"
+                    case .black, .white:
+                        if let mySeat, Stone(rawValue: result.rawValue) == mySeat {
+                            body = "You won"
+                        } else {
+                            body = "\(name) won the game"
+                        }
+                    }
+                    await notificationManager.scheduleGameNotification(
+                        gameId: gameId,
+                        title: "Room \(gameId.uppercased())",
+                        body: body
+                    )
+                    lastNotificationTime = now
+                }
+            }
+        }
     }
 
     // MARK: - Derived state
@@ -132,6 +225,9 @@ final class GameViewModel {
            state.players[mySeat.opposite] != nil {
             AudioServicesPlaySystemSound(1054) // subtle "tock" sound
         }
+
+        // Notify if in background
+        notifyIfNeeded(state, previous: previousGame)
 
         guard state.status == .finished, bothVotedRematch else { return }
         // Both clients may observe the second vote and both race to reset;

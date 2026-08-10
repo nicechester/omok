@@ -63,7 +63,7 @@ struct PlayView: View {
             }
         }
         .onAppear {
-            if roomCode.isEmpty {
+            if pendingGameCode == nil && roomCode.isEmpty {
                 roomCode = generateRandomCode()
             }
         }
