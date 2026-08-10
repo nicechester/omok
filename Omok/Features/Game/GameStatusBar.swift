@@ -30,7 +30,7 @@ struct GameStatusBar: View {
                             .foregroundColor(showCopyFeedback ? .green : .blue)
                     }
                     ShareLink(
-                        item: URL(string: "https://omok.example.com/?code=\(gameId)") ?? URL(fileURLWithPath: ""),
+                        item: URL(string: "omok://join?code=\(gameId)") ?? URL(fileURLWithPath: ""),
                         subject: Text("Join Omok"),
                         message: Text("Join my game with code: \(gameId)")
                     ) {

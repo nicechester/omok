@@ -2,9 +2,11 @@ import SwiftUI
 
 struct RootTabView: View {
     let uid: String
+    @Binding var pendingGameCode: String?
 
-    init(uid: String) {
+    init(uid: String, pendingGameCode: Binding<String?>) {
         self.uid = uid
+        self._pendingGameCode = pendingGameCode
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         UITabBar.appearance().standardAppearance = appearance
@@ -21,7 +23,7 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                PlayView(uid: uid)
+                PlayView(uid: uid, pendingGameCode: $pendingGameCode)
             }
             .tabItem {
                 Label("Play", image: "omok-bh")
@@ -38,5 +40,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(uid: "user1")
+    RootTabView(uid: "user1", pendingGameCode: .constant(nil))
 }

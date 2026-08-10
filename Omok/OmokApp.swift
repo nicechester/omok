@@ -5,6 +5,7 @@ import Firebase
 struct OmokApp: App {
     @State private var authService: AuthService
     @State private var isInitialized = false
+    @State private var pendingGameCode: String?
     @AppStorage(PlayerName.storageKey) private var playerName = ""
 
     init() {
@@ -21,7 +22,7 @@ struct OmokApp: App {
                             NicknameView(isFirstRun: true)
                         }
                     } else {
-                        RootTabView(uid: uid)
+                        RootTabView(uid: uid, pendingGameCode: $pendingGameCode)
                     }
                 } else {
                     ProgressView("Initializing...")
@@ -31,6 +32,23 @@ struct OmokApp: App {
                         }
                 }
             }
+            .onOpenURL { url in
+                handleDeepLink(url)
+            }
+        }
+    }
+    
+    private func handleDeepLink(_ url: URL) {
+        // Handle omok://join?code=abc12
+        guard url.scheme == "omok",
+              url.host == "join" else {
+            return
+        }
+        
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+           let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
+           !code.isEmpty {
+            pendingGameCode = code
         }
     }
 }

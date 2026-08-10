@@ -245,6 +245,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -343,6 +344,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

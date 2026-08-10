@@ -156,6 +156,16 @@ final class GameViewModel {
             errorMessage = error.localizedDescription
         }
     }
+    
+    func forfeit() async {
+        do {
+            try await repository.forfeit(gameId: gameId, uid: uid)
+        } catch let error as GameError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 
     func requestRematch() async {
         do {
