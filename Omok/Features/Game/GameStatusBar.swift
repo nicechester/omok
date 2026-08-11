@@ -42,7 +42,7 @@ struct GameStatusBar: View {
                         }
                     }) {
                         Image(systemName: showCopyFeedback ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(showCopyFeedback ? .green : .blue)
                             .padding(8)
                     }
@@ -54,7 +54,7 @@ struct GameStatusBar: View {
                         message: Text("Join my game with code: \(gameId)")
                     ) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.blue)
                             .padding(8)
                     }
@@ -62,7 +62,7 @@ struct GameStatusBar: View {
                     // Leave button
                     Button(action: { onLeave?() }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.red)
                             .padding(8)
                     }
