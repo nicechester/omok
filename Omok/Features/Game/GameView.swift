@@ -32,6 +32,7 @@ struct GameView: View {
     @State private var rawSamplesCancellable: AnyCancellable?
     @State private var playbackSamplesCancellable: AnyCancellable?
     @State private var receivingAudioCancellable: AnyCancellable?
+    @State private var micWasEnabledBeforeBackground = false
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
         self.gameId = gameId
@@ -345,8 +346,20 @@ struct GameView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
+                // Pause audio capture when backgrounding
+                if isMicEnabled {
+                    micWasEnabledBeforeBackground = true
+                    stopAudioCapture()
+                    isMicEnabled = false
+                }
                 viewModel.appDidEnterBackground()
             } else if newPhase == .active {
+                // Resume audio capture if it was enabled before background
+                if micWasEnabledBeforeBackground {
+                    isMicEnabled = true
+                    startAudioCapture()
+                    micWasEnabledBeforeBackground = false
+                }
                 viewModel.appDidBecomeActive()
             }
         }
