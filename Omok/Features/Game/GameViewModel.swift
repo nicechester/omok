@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import AudioToolbox
 import UIKit
+import SwiftUI
 
 @Observable
 @MainActor
@@ -12,6 +13,7 @@ final class GameViewModel {
     var mySeat: Stone?
     var errorMessage: String?
     private var hadOpponent = false
+    private var currentScenePhase: ScenePhase = .active
 
     private let uid: String
     private let playerName: String
@@ -65,6 +67,10 @@ final class GameViewModel {
 
     // MARK: - Background lifecycle
 
+    func setScenePhase(_ phase: ScenePhase) {
+        currentScenePhase = phase
+    }
+
     func appDidEnterBackground() {
         backgroundedAt = Date()
         beginBackgroundTask()
@@ -90,7 +96,8 @@ final class GameViewModel {
     }
 
     private func notifyIfNeeded(_ state: GameState?, previous: GameState?) {
-        guard !isSpectator, let backgroundedAt, let state else { return }
+        guard !isSpectator, let state else { return }
+        guard currentScenePhase == .background else { return }
 
         let now = Date()
         if let lastNotificationTime, now.timeIntervalSince(lastNotificationTime) < 5 {
