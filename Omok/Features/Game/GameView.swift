@@ -242,7 +242,10 @@ struct GameView: View {
                 myName: playerName,
                 players: viewModel.game?.players ?? [:],
                 remainingSeconds: viewModel.remainingSeconds,
-                onLeave: { onLeave?() }
+                onLeave: {
+                    viewModel.markPlayerAsDisconnected()
+                    onLeave?()
+                }
             )
 
             BoardView(
@@ -332,6 +335,7 @@ struct GameView: View {
             await audioMessenger.startObservingSessions()
             recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
             await viewModel.start()
+            viewModel.markPlayerAsActive()
         }
         .onChange(of: scenePhase) { _, newPhase in
             viewModel.setScenePhase(newPhase)

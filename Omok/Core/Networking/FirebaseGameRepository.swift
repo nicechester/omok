@@ -375,6 +375,40 @@ final class FirebaseGameRepository: GameRepository {
         try await ref.updateChildValues(updates)
     }
 
+    func updatePlayerActive(gameId: String, uid: String, isActive: Bool) async throws {
+        let ref = gameRef(gameId)
+
+        // Fetch current state to get user's seat
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        let players = dict["players"] as? [String: Any] ?? [:]
+
+        // Find user's seat
+        var userSeat: Stone?
+        for color in [Stone.black, Stone.white] {
+            if let seat = players[color.rawValue] as? [String: Any],
+               seat["uid"] as? String == uid {
+                userSeat = color
+                break
+            }
+        }
+
+        guard let seat = userSeat else {
+            throw GameError.gameNotFound
+        }
+
+        // Update active status for this player
+        let updates: [String: Any] = [
+            "players/\(seat.rawValue)/active": isActive,
+            "updatedAt": ServerValue.timestamp()
+        ]
+
+        try await ref.updateChildValues(updates)
+    }
+
     // MARK: - Undo
 
     func requestUndo(gameId: String, uid: String) async throws {

@@ -10,6 +10,7 @@ protocol GameRepository {
     func voteRematch(gameId: String, uid: String) async throws
     func resetForRematch(gameId: String) async throws
     func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws
+    func updatePlayerActive(gameId: String, uid: String, isActive: Bool) async throws
     func requestUndo(gameId: String, uid: String) async throws
     func approveUndo(gameId: String, uid: String) async throws
     func rejectUndo(gameId: String, uid: String) async throws
