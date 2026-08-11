@@ -74,6 +74,7 @@ struct PlayView: View {
             Spacer()
         }
         .padding()
+        .contentShape(Rectangle())
         .onTapGesture {
             isRoomCodeFocused = false
         }
