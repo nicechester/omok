@@ -36,7 +36,7 @@ final class FirebaseGameRepository: GameRepository {
 
     // MARK: - Create
 
-    func createGame(gameId: String, creatorUid: String, creatorName: String) async throws {
+    func createGame(gameId: String, creatorUid: String, creatorName: String, timerDuration: Int?) async throws {
         let sanitizedName = PlayerName.sanitize(creatorName)
         var blackSeat: [String: Any] = [
             "uid": creatorUid,
@@ -46,7 +46,7 @@ final class FirebaseGameRepository: GameRepository {
         if !sanitizedName.isEmpty {
             blackSeat["name"] = sanitizedName
         }
-        let data: [String: Any] = [
+        var data: [String: Any] = [
             "status": GameStatus.waiting.rawValue,
             "turn": Stone.black.rawValue,
             "round": 0,
@@ -59,6 +59,10 @@ final class FirebaseGameRepository: GameRepository {
             "createdAt": ServerValue.timestamp(),
             "updatedAt": ServerValue.timestamp()
         ]
+        if let duration = timerDuration {
+            data["timerDuration"] = duration
+            data["turnStartedAt"] = ServerValue.timestamp()
+        }
         try await gameRef(gameId).setValue(data)
     }
 
@@ -188,6 +192,11 @@ final class FirebaseGameRepository: GameRepository {
             "updatedAt": ServerValue.timestamp()
         ]
 
+        // Re-stamp turnStartedAt if timer is enabled
+        if dict["timerDuration"] != nil {
+            updates["turnStartedAt"] = Int(Date().timeIntervalSince1970 * 1000)
+        }
+
         // Store previousLastMove for undo functionality
         if let lastMoveDict = dict["lastMove"] as? [String: Any] {
             updates["previousLastMove"] = lastMoveDict
@@ -279,7 +288,7 @@ final class FirebaseGameRepository: GameRepository {
 
         let round = (dict["round"] as? Int ?? 0) + 1
 
-        let updates: [String: Any] = [
+        var updates: [String: Any] = [
             "round": round,
             "moveCount": 0,
             "board": NSNull(),
@@ -293,6 +302,11 @@ final class FirebaseGameRepository: GameRepository {
             "status": GameStatus.playing.rawValue,
             "updatedAt": ServerValue.timestamp()
         ]
+
+        // Re-stamp turnStartedAt if timer is enabled (critical for round 2)
+        if dict["timerDuration"] != nil {
+            updates["turnStartedAt"] = Int(Date().timeIntervalSince1970 * 1000)
+        }
 
         try await ref.updateChildValues(updates)
     }
@@ -426,6 +440,11 @@ final class FirebaseGameRepository: GameRepository {
             "updatedAt": ServerValue.timestamp()
         ]
 
+        // Re-stamp turnStartedAt if timer is enabled (approval resets timer)
+        if dict["timerDuration"] != nil {
+            updates["turnStartedAt"] = Int(Date().timeIntervalSince1970 * 1000)
+        }
+
         // Revert board by removing the last stone
         if let lastMoveDict = dict["lastMove"] as? [String: Any],
            let r = lastMoveDict["r"] as? Int,
@@ -459,9 +478,53 @@ final class FirebaseGameRepository: GameRepository {
             throw GameError.noUndoPending
         }
 
-        let updates: [String: Any] = [
+        var updates: [String: Any] = [
             "undoRequest": NSNull(),
             "updatedAt": ServerValue.timestamp()
+        ]
+
+        // Re-stamp turnStartedAt if timer is enabled (rejection resets timer)
+        if dict["timerDuration"] != nil {
+            updates["turnStartedAt"] = Int(Date().timeIntervalSince1970 * 1000)
+        }
+
+        try await ref.updateChildValues(updates)
+    }
+
+    // MARK: - Auto-pass turn
+
+    func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws {
+        let ref = gameRef(gameId)
+
+        // Fetch current state and verify conditions before updating
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        guard let statusRaw = dict["status"] as? String,
+              statusRaw == GameStatus.playing.rawValue else {
+            throw GameError.gameNotActive
+        }
+
+        guard let turnRaw = dict["turn"] as? String,
+              let turn = Stone(rawValue: turnRaw),
+              turn == expectedTurn else {
+            throw GameError.turnAlreadyAdvanced
+        }
+
+        // Check turnStartedAt with 300ms tolerance
+        if let turnStartedAt = dict["turnStartedAt"] as? Int {
+            let delta = abs(turnStartedAt - expectedTurnStartedAt)
+            guard delta <= 300 else {
+                throw GameError.turnAlreadyAdvanced
+            }
+        }
+
+        // Update: flip turn
+        let updates: [String: Any] = [
+            "turn": turn.opposite.rawValue,
+            "updatedAt": Int(Date().timeIntervalSince1970 * 1000)
         ]
 
         try await ref.updateChildValues(updates)
@@ -573,6 +636,9 @@ final class FirebaseGameRepository: GameRepository {
             previousLastMove = LastMove(r: r, c: c, color: color)
         }
 
+        let timerDuration = dict["timerDuration"] as? Int
+        let turnStartedAt = dict["turnStartedAt"] as? Int
+
         return GameState(
             status: status,
             turn: turn,
@@ -587,7 +653,9 @@ final class FirebaseGameRepository: GameRepository {
             undoRequest: undoRequest,
             previousLastMove: previousLastMove,
             createdBy: createdBy,
-            speaking: speaking
+            speaking: speaking,
+            timerDuration: timerDuration,
+            turnStartedAt: turnStartedAt
         )
     }
 }

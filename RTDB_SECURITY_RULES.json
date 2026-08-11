@@ -73,7 +73,9 @@
             "r":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
             "c":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
             "color": { ".validate": "newData.val() === 'black' || newData.val() === 'white'" }
-          }
+          },
+          "timerDuration": { ".validate": "(newData.val() === 10 || newData.val() === 20 || newData.val() === 30 || newData.val() === 60) && (!data.exists() || data.val() === newData.val())" },
+          "turnStartedAt": { ".validate": "newData.isNumber()" }
         }
       }
     }

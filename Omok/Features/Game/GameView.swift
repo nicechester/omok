@@ -9,6 +9,7 @@ struct GameView: View {
     let uid: String
     let playerName: String
     var onLeave: (() -> Void)? = nil
+    let timerDuration: Int?
 
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
@@ -34,15 +35,17 @@ struct GameView: View {
     @State private var receivingAudioCancellable: AnyCancellable?
     @State private var micWasEnabledBeforeBackground = false
 
-    init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil) {
+    init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil, timerDuration: Int? = nil) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
         self.onLeave = onLeave
+        self.timerDuration = timerDuration
         _viewModel = State(initialValue: GameViewModel(
             gameId: gameId,
             uid: uid,
             playerName: playerName,
+            timerDuration: timerDuration,
             repository: FirebaseGameRepository()
         ))
         _audioMessenger = State(initialValue: AudioMessenger(gameId: gameId, uid: uid))
@@ -237,7 +240,8 @@ struct GameView: View {
                 statusText: viewModel.statusText,
                 mySeat: viewModel.mySeat,
                 myName: playerName,
-                players: viewModel.game?.players ?? [:]
+                players: viewModel.game?.players ?? [:],
+                remainingSeconds: viewModel.remainingSeconds
             )
 
             BoardView(

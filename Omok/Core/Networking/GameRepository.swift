@@ -2,7 +2,7 @@ import Foundation
 
 protocol GameRepository {
     func listenToGame(gameId: String) -> AsyncStream<GameState?>
-    func createGame(gameId: String, creatorUid: String, creatorName: String) async throws
+    func createGame(gameId: String, creatorUid: String, creatorName: String, timerDuration: Int?) async throws
     func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone
     func placeStone(gameId: String, at cell: Cell, uid: String) async throws
     func forfeit(gameId: String, uid: String) async throws
@@ -12,6 +12,7 @@ protocol GameRepository {
     func requestUndo(gameId: String, uid: String) async throws
     func approveUndo(gameId: String, uid: String) async throws
     func rejectUndo(gameId: String, uid: String) async throws
+    func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws
 }
 
 enum GameError: LocalizedError {
@@ -23,6 +24,7 @@ enum GameError: LocalizedError {
     case undoNotAllowed
     case undoAlreadyPending
     case noUndoPending
+    case turnAlreadyAdvanced
 
     var errorDescription: String? {
         switch self {
@@ -42,6 +44,8 @@ enum GameError: LocalizedError {
             return "An undo request is already pending."
         case .noUndoPending:
             return "No undo request to reject."
+        case .turnAlreadyAdvanced:
+            return "Turn already advanced."
         }
     }
 }

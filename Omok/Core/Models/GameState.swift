@@ -54,6 +54,8 @@ struct GameState: Sendable {
     let previousLastMove: LastMove?
     let createdBy: String
     let speaking: [Stone: Bool]
+    let timerDuration: Int?
+    let turnStartedAt: Int?
 
     func seat(of uid: String) -> Stone? {
         for (color, seat) in players {

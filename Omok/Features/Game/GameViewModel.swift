@@ -12,8 +12,10 @@ final class GameViewModel {
     var game: GameState?
     var mySeat: Stone?
     var errorMessage: String?
+    var remainingSeconds: Int?
     private var hadOpponent = false
     private var currentScenePhase: ScenePhase = .active
+    let timerDuration: Int?
 
     private let uid: String
     private let playerName: String
@@ -54,10 +56,24 @@ final class GameViewModel {
         set { undoTimeoutTaskBox.task = newValue }
     }
 
-    init(gameId: String, uid: String, playerName: String, repository: GameRepository = FirebaseGameRepository()) {
+    // A plain box for timer task
+    private final class TimerTaskBox {
+        var task: Task<Void, Never>?
+        deinit { task?.cancel() }
+    }
+    private let timerTaskBox = TimerTaskBox()
+    private var timerTask: Task<Void, Never>? {
+        get { timerTaskBox.task }
+        set { timerTaskBox.task = newValue }
+    }
+
+    private var timerAnchor: (turn: Stone, turnStartedAt: Int)?
+
+    init(gameId: String, uid: String, playerName: String, timerDuration: Int? = nil, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
+        self.timerDuration = timerDuration
         self.repository = repository
     }
 
@@ -80,6 +96,9 @@ final class GameViewModel {
         backgroundedAt = nil
         endBackgroundTask()
         UIApplication.shared.applicationIconBadgeNumber = 0
+        if let game {
+            updateTimerState(for: game, force: true)
+        }
     }
 
     private func beginBackgroundTask() {
@@ -238,7 +257,7 @@ final class GameViewModel {
         } catch GameError.gameNotFound {
             // Game doesn't exist yet, create it (creator gets black seat)
             do {
-                try await repository.createGame(gameId: gameId, creatorUid: uid, creatorName: playerName)
+                try await repository.createGame(gameId: gameId, creatorUid: uid, creatorName: playerName, timerDuration: timerDuration)
                 mySeat = .black
             } catch {
                 errorMessage = error.localizedDescription
@@ -286,6 +305,9 @@ final class GameViewModel {
             undoTimeoutTask?.cancel()
             undoTimeoutTask = nil
         }
+
+        // Update timer state
+        updateTimerState(for: state, force: false)
 
         guard state.status == .finished, bothVotedRematch else { return }
         // Both clients may observe the second vote and both race to reset;
@@ -379,6 +401,66 @@ final class GameViewModel {
                 try await repository.rejectUndo(gameId: gameId, uid: uid)
             } catch {
                 // Silently ignore: timeout reject is best-effort
+            }
+        }
+    }
+
+    private func updateTimerState(for state: GameState, force: Bool) {
+        // Stop ticking if undo request is pending
+        if state.undoRequest != nil {
+            timerTask?.cancel()
+            timerTask = nil
+            return
+        }
+
+        // Only process if status is playing
+        guard state.status == .playing else {
+            timerTask?.cancel()
+            timerTask = nil
+            remainingSeconds = nil
+            return
+        }
+
+        // Check if timer is enabled
+        guard let duration = state.timerDuration, let turnStartedAt = state.turnStartedAt else {
+            timerTask?.cancel()
+            timerTask = nil
+            remainingSeconds = nil
+            return
+        }
+
+        // If turn or turnStartedAt changed, or force recompute, restart ticking
+        let needsRestart = force || timerAnchor?.turn != state.turn || timerAnchor?.turnStartedAt != turnStartedAt
+        if needsRestart {
+            timerTask?.cancel()
+            timerAnchor = (turn: state.turn, turnStartedAt: turnStartedAt)
+            startTicking(turn: state.turn, turnStartedAt: turnStartedAt, duration: duration)
+        }
+    }
+
+    private func startTicking(turn: Stone, turnStartedAt: Int, duration: Int) {
+        timerTask = Task { @MainActor [weak self, gameId, repository] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                let now = Int(Date().timeIntervalSince1970 * 1000)
+                let elapsed = now - turnStartedAt
+                let remaining = max(0, duration * 1000 - elapsed)
+                let remainingInt = (remaining + 999) / 1000  // Round up to nearest second
+
+                self.remainingSeconds = remainingInt
+
+                if remainingInt <= 0 {
+                    // Timer expired, try auto-pass
+                    do {
+                        try await repository.autoPassTurn(gameId: gameId, expectedTurn: turn, expectedTurnStartedAt: turnStartedAt)
+                    } catch {
+                        // Silently swallow turnAlreadyAdvanced and other errors
+                    }
+                    return
+                }
+
+                // Sleep for 1 second
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
     }
