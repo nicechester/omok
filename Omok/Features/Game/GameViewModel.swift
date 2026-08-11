@@ -99,6 +99,18 @@ final class GameViewModel {
         if let game {
             updateTimerState(for: game, force: true)
         }
+
+        // Force listener to re-subscribe for fresh snapshot (fixes stale state like turn)
+        if game != nil {
+            listenTask?.cancel()
+            listenTask = Task { @MainActor [weak self, gameId, repository] in
+                guard let self else { return }
+                for await state in repository.listenToGame(gameId: gameId) {
+                    if Task.isCancelled { break }
+                    await self.handle(state)
+                }
+            }
+        }
     }
 
     private func beginBackgroundTask() {
