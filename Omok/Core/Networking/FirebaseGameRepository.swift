@@ -155,6 +155,11 @@ final class FirebaseGameRepository: GameRepository {
             throw GameError.notYourTurn
         }
 
+        // Prevent move if undo request is pending
+        if dict["undoRequest"] != nil {
+            throw GameError.gameNotActive
+        }
+
         let board = dict["board"] as? [String: Any] ?? [:]
         let key = cell.key
         guard board[key] == nil else {
@@ -174,7 +179,7 @@ final class FirebaseGameRepository: GameRepository {
 
         let moveCount = (dict["moveCount"] as? Int ?? 0) + 1
 
-        // Prepare updates
+        // Capture previousLastMove before updating lastMove
         var updates: [String: Any] = [
             "board/\(key)": turn.rawValue,
             "moveCount": moveCount,
@@ -182,6 +187,13 @@ final class FirebaseGameRepository: GameRepository {
             "turn": turn.opposite.rawValue,
             "updatedAt": ServerValue.timestamp()
         ]
+
+        // Store previousLastMove for undo functionality
+        if let lastMoveDict = dict["lastMove"] as? [String: Any] {
+            updates["previousLastMove"] = lastMoveDict
+        } else {
+            updates["previousLastMove"] = NSNull()
+        }
 
         // Check for win
         if let line = GomokuRules.winningLine(board: boardCells, from: cell, color: turn) {
@@ -237,6 +249,7 @@ final class FirebaseGameRepository: GameRepository {
             "status": GameStatus.finished.rawValue,
             "result": winner.rawValue,
             "players/\(forfeitingSeat.rawValue)/active": false,
+            "undoRequest": NSNull(),
             "updatedAt": ServerValue.timestamp()
         ]
 
@@ -271,9 +284,11 @@ final class FirebaseGameRepository: GameRepository {
             "moveCount": 0,
             "board": NSNull(),
             "lastMove": NSNull(),
+            "previousLastMove": NSNull(),
             "result": NSNull(),
             "winningLine": NSNull(),
             "rematch": NSNull(),
+            "undoRequest": NSNull(),
             "turn": (round % 2 == 0 ? Stone.black : Stone.white).rawValue,
             "status": GameStatus.playing.rawValue,
             "updatedAt": ServerValue.timestamp()
@@ -312,6 +327,140 @@ final class FirebaseGameRepository: GameRepository {
         // Update speaking state for this player
         let updates: [String: Any] = [
             "speaking/\(seat.rawValue)": isSpeaking,
+            "updatedAt": ServerValue.timestamp()
+        ]
+
+        try await ref.updateChildValues(updates)
+    }
+
+    // MARK: - Undo
+
+    func requestUndo(gameId: String, uid: String) async throws {
+        let ref = gameRef(gameId)
+
+        // Fetch current state
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        guard let statusRaw = dict["status"] as? String,
+              statusRaw == GameStatus.playing.rawValue else {
+            throw GameError.gameNotActive
+        }
+
+        let moveCount = dict["moveCount"] as? Int ?? 0
+        guard moveCount >= 2 else {
+            throw GameError.undoNotAllowed
+        }
+
+        guard dict["undoRequest"] == nil else {
+            throw GameError.undoAlreadyPending
+        }
+
+        let updates: [String: Any] = [
+            "undoRequest": ["requestedBy": uid, "createdAt": Int(Date().timeIntervalSince1970 * 1000)],
+            "updatedAt": ServerValue.timestamp()
+        ]
+
+        try await ref.updateChildValues(updates)
+    }
+
+    func approveUndo(gameId: String, uid: String) async throws {
+        let ref = gameRef(gameId)
+
+        // Fetch current state
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        guard let statusRaw = dict["status"] as? String,
+              statusRaw == GameStatus.playing.rawValue else {
+            throw GameError.gameNotActive
+        }
+
+        guard let undoRequestDict = dict["undoRequest"] as? [String: Any],
+              let requestedBy = undoRequestDict["requestedBy"] as? String else {
+            throw GameError.noUndoPending
+        }
+
+        // The approving player must be the opponent of the requester
+        guard let players = dict["players"] as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        var approverSeat: Stone?
+        for color in [Stone.black, Stone.white] {
+            if let seat = players[color.rawValue] as? [String: Any],
+               seat["uid"] as? String == uid {
+                approverSeat = color
+                break
+            }
+        }
+
+        guard let approverSeat else {
+            throw GameError.gameNotFound
+        }
+
+        // Verify the approver is not the requester
+        var requesterSeat: Stone?
+        for color in [Stone.black, Stone.white] {
+            if let seat = players[color.rawValue] as? [String: Any],
+               seat["uid"] as? String == requestedBy {
+                requesterSeat = color
+                break
+            }
+        }
+        guard let requesterSeat, requesterSeat != approverSeat else {
+            throw GameError.notYourTurn
+        }
+
+        let moveCount = (dict["moveCount"] as? Int ?? 0) - 1
+        let lastTurn = (dict["turn"] as? String).flatMap(Stone.init(rawValue:)) ?? .black
+
+        var updates: [String: Any] = [
+            "moveCount": moveCount,
+            "turn": lastTurn.opposite.rawValue,
+            "undoRequest": NSNull(),
+            "updatedAt": ServerValue.timestamp()
+        ]
+
+        // Revert board by removing the last stone
+        if let lastMoveDict = dict["lastMove"] as? [String: Any],
+           let r = lastMoveDict["r"] as? Int,
+           let c = lastMoveDict["c"] as? Int {
+            let cellKey = "\(r)_\(c)"
+            updates["board/\(cellKey)"] = NSNull()
+        }
+
+        // Restore lastMove from previousLastMove
+        if let previousLastMoveDict = dict["previousLastMove"] as? [String: Any] {
+            updates["lastMove"] = previousLastMoveDict
+        } else {
+            updates["lastMove"] = NSNull()
+        }
+
+        updates["previousLastMove"] = NSNull()
+
+        try await ref.updateChildValues(updates)
+    }
+
+    func rejectUndo(gameId: String, uid: String) async throws {
+        let ref = gameRef(gameId)
+
+        // Fetch current state
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        guard dict["undoRequest"] != nil else {
+            throw GameError.noUndoPending
+        }
+
+        let updates: [String: Any] = [
+            "undoRequest": NSNull(),
             "updatedAt": ServerValue.timestamp()
         ]
 
@@ -408,6 +557,22 @@ final class FirebaseGameRepository: GameRepository {
             }
         }
 
+        var undoRequest: UndoRequest?
+        if let undoRequestDict = dict["undoRequest"] as? [String: Any],
+           let requestedBy = undoRequestDict["requestedBy"] as? String,
+           let createdAt = undoRequestDict["createdAt"] as? Int {
+            undoRequest = UndoRequest(requestedBy: requestedBy, createdAt: createdAt)
+        }
+
+        var previousLastMove: LastMove?
+        if let previousLastMoveDict = dict["previousLastMove"] as? [String: Any],
+           let r = previousLastMoveDict["r"] as? Int,
+           let c = previousLastMoveDict["c"] as? Int,
+           let colorRaw = previousLastMoveDict["color"] as? String,
+           let color = Stone(rawValue: colorRaw) {
+            previousLastMove = LastMove(r: r, c: c, color: color)
+        }
+
         return GameState(
             status: status,
             turn: turn,
@@ -419,6 +584,8 @@ final class FirebaseGameRepository: GameRepository {
             winningLine: winningLine,
             players: players,
             rematchVotes: rematchVotes,
+            undoRequest: undoRequest,
+            previousLastMove: previousLastMove,
             createdBy: createdBy,
             speaking: speaking
         )

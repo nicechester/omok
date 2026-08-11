@@ -9,6 +9,9 @@ protocol GameRepository {
     func voteRematch(gameId: String, uid: String) async throws
     func resetForRematch(gameId: String) async throws
     func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws
+    func requestUndo(gameId: String, uid: String) async throws
+    func approveUndo(gameId: String, uid: String) async throws
+    func rejectUndo(gameId: String, uid: String) async throws
 }
 
 enum GameError: LocalizedError {
@@ -17,6 +20,9 @@ enum GameError: LocalizedError {
     case notYourTurn
     case cellOccupied
     case gameNotActive
+    case undoNotAllowed
+    case undoAlreadyPending
+    case noUndoPending
 
     var errorDescription: String? {
         switch self {
@@ -30,6 +36,12 @@ enum GameError: LocalizedError {
             return "That cell is already taken."
         case .gameNotActive:
             return "This game isn't active."
+        case .undoNotAllowed:
+            return "Cannot undo before the second move."
+        case .undoAlreadyPending:
+            return "An undo request is already pending."
+        case .noUndoPending:
+            return "No undo request to reject."
         }
     }
 }

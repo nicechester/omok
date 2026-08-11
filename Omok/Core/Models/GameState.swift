@@ -34,6 +34,11 @@ struct LastMove: Codable, Sendable {
     }
 }
 
+struct UndoRequest: Codable, Sendable {
+    let requestedBy: String
+    let createdAt: Int
+}
+
 struct GameState: Sendable {
     let status: GameStatus
     let turn: Stone
@@ -45,6 +50,8 @@ struct GameState: Sendable {
     let winningLine: [Cell]?
     let players: [Stone: PlayerSeat]
     let rematchVotes: Set<String>
+    let undoRequest: UndoRequest?
+    let previousLastMove: LastMove?
     let createdBy: String
     let speaking: [Stone: Bool]
 
