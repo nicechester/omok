@@ -93,7 +93,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         UIApplication.shared.applicationIconBadgeNumber = 0
-        completionHandler([.banner, .sound, .badge])
+        // Only show banner if app is backgrounded; suppress banner when user is actively using app
+        let options: UNNotificationPresentationOptions = UIApplication.shared.applicationState == .active ? [.sound, .badge] : [.banner, .sound, .badge]
+        completionHandler(options)
     }
 
     nonisolated func userNotificationCenter(
