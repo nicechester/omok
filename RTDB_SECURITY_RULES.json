@@ -3,6 +3,14 @@
     "omok": {
       ".read": "auth != null",
       ".write": "auth != null",
+      "users": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "$uid === auth.uid",
+          "fcmToken": { ".validate": "newData.isString()" },
+          "nickname": { ".validate": "newData.isString() && newData.val().length <= 20" }
+        }
+      },
       "audio": {
         "$gameId": {
           ".read": "auth != null",

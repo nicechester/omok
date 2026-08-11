@@ -5,6 +5,7 @@ protocol GameRepository {
     func createGame(gameId: String, creatorUid: String, creatorName: String) async throws
     func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone
     func placeStone(gameId: String, at cell: Cell, uid: String) async throws
+    func forfeit(gameId: String, uid: String) async throws
     func voteRematch(gameId: String, uid: String) async throws
     func resetForRematch(gameId: String) async throws
     func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws

@@ -40,7 +40,8 @@ final class FirebaseGameRepository: GameRepository {
         let sanitizedName = PlayerName.sanitize(creatorName)
         var blackSeat: [String: Any] = [
             "uid": creatorUid,
-            "joinedAt": ServerValue.timestamp()
+            "joinedAt": ServerValue.timestamp(),
+            "active": true
         ]
         if !sanitizedName.isEmpty {
             blackSeat["name"] = sanitizedName
@@ -100,7 +101,8 @@ final class FirebaseGameRepository: GameRepository {
         let seatColor: Stone = blackTaken ? .white : .black
         var newSeat: [String: Any] = [
             "uid": uid,
-            "joinedAt": ServerValue.timestamp()
+            "joinedAt": ServerValue.timestamp(),
+            "active": true
         ]
         if !sanitizedName.isEmpty {
             newSeat["name"] = sanitizedName
@@ -190,6 +192,53 @@ final class FirebaseGameRepository: GameRepository {
             updates["status"] = GameStatus.finished.rawValue
             updates["result"] = GameResult.draw.rawValue
         }
+
+        try await ref.updateChildValues(updates)
+    }
+    
+    // MARK: - Forfeit
+    
+    func forfeit(gameId: String, uid: String) async throws {
+        let ref = gameRef(gameId)
+        
+        // Fetch current state
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+        
+        guard let statusRaw = dict["status"] as? String,
+              statusRaw == GameStatus.playing.rawValue else {
+            throw GameError.gameNotActive
+        }
+        
+        guard let players = dict["players"] as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+        
+        // Find which seat the user has
+        var userSeat: Stone?
+        for color in [Stone.black, Stone.white] {
+            if let seat = players[color.rawValue] as? [String: Any],
+               seat["uid"] as? String == uid {
+                userSeat = color
+                break
+            }
+        }
+        
+        guard let forfeitingSeat = userSeat else {
+            throw GameError.notYourTurn
+        }
+        
+        // Winner is the opponent
+        let winner = forfeitingSeat.opposite
+
+        let updates: [String: Any] = [
+            "status": GameStatus.finished.rawValue,
+            "result": winner.rawValue,
+            "players/\(forfeitingSeat.rawValue)/active": false,
+            "updatedAt": ServerValue.timestamp()
+        ]
 
         try await ref.updateChildValues(updates)
     }
@@ -338,7 +387,8 @@ final class FirebaseGameRepository: GameRepository {
                 }
                 let joinedAt = seatDict["joinedAt"] as? Int ?? 0
                 let name = seatDict["name"] as? String
-                players[color] = PlayerSeat(uid: uid, joinedAt: joinedAt, name: name)
+                let active = seatDict["active"] as? Bool
+                players[color] = PlayerSeat(uid: uid, joinedAt: joinedAt, name: name, active: active)
             }
         }
 

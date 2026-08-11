@@ -2,9 +2,14 @@ import SwiftUI
 
 struct RootTabView: View {
     let uid: String
+    @Binding var pendingGameCode: String?
+    @AppStorage(PlayerName.storageKey) private var playerName = ""
+    @State private var selectedTab = 1
+    @State private var selectedGameId: String?
 
-    init(uid: String) {
+    init(uid: String, pendingGameCode: Binding<String?>) {
         self.uid = uid
+        self._pendingGameCode = pendingGameCode
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         UITabBar.appearance().standardAppearance = appearance
@@ -12,31 +17,55 @@ struct RootTabView: View {
     }
 
     var body: some View {
-        TabView {
-            NavigationStack {
-                RoomsView(uid: uid)
+        NavigationStack(path: Binding(
+            get: { selectedGameId.map { [$0] } ?? [] },
+            set: {
+                if let first = $0.first {
+                    selectedGameId = first
+                } else {
+                    selectedGameId = nil
+                }
             }
-            .tabItem {
-                Label("Rooms", systemImage: "list.bullet")
-            }
+        )) {
+            TabView(selection: $selectedTab) {
+                NavigationStack {
+                    RoomsView(uid: uid)
+                }
+                .tabItem {
+                    Label("Rooms", systemImage: "list.bullet")
+                }
+                .tag(1)
 
-            NavigationStack {
-                PlayView(uid: uid)
-            }
-            .tabItem {
-                Label("Play", image: "omok-bh")
-            }
+                NavigationStack {
+                    PlayView(uid: uid, pendingGameCode: $pendingGameCode)
+                }
+                .tabItem {
+                    Label("Play", image: "omok-bh")
+                }
+                .tag(2)
 
-            NavigationStack {
-                SettingsView()
+                NavigationStack {
+                    SettingsView()
+                }
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .tag(3)
             }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
+            .navigationDestination(for: String.self) { gameId in
+                GameView(gameId: gameId, uid: uid, playerName: playerName, onLeave: { selectedGameId = nil })
+                    .navigationBarBackButtonHidden()
+            }
+        }
+        .onChange(of: pendingGameCode) { _, newCode in
+            if let code = newCode {
+                selectedGameId = code
+                pendingGameCode = nil
             }
         }
     }
 }
 
 #Preview {
-    RootTabView(uid: "user1")
+    RootTabView(uid: "user1", pendingGameCode: .constant(nil))
 }

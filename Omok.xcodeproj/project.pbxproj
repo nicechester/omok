@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		2842354D852CF6C60107D337 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 49B68FB861DCBC0298D2ACDA /* Assets.xcassets */; };
 		3A72E3104E3BF535197A7C50 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = E544E81C539A0906461D1F58 /* FirebaseDatabase */; };
+		45C7EB75302A6D8400339CB5 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 45C7EB74302A6D8400339CB5 /* FirebaseMessaging */; };
 		5D85CE93587F9C5DD0858ABD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 91D5BAEC0413F58127209A7C /* FirebaseAuth */; };
 		60600725B1037993E7791867 /* OmokApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E63DB3E3E6ECADD13F207EB5 /* OmokApp.swift */; };
 		B62A74F7AEBBA7BEA450E327 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A4E2D1E991440A4D828F9253 /* Preview Assets.xcassets */; };
@@ -17,6 +18,7 @@
 
 /* Begin PBXFileReference section */
 		45237A443020323200FF5852 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		45C7EB72302A6C5300339CB5 /* Omok.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Omok.entitlements; sourceTree = "<group>"; };
 		49B68FB861DCBC0298D2ACDA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6B08753164041DCDFE195540 /* Omok.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Omok.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4E2D1E991440A4D828F9253 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -35,6 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				45C7EB75302A6D8400339CB5 /* FirebaseMessaging in Frameworks */,
 				5D85CE93587F9C5DD0858ABD /* FirebaseAuth in Frameworks */,
 				3A72E3104E3BF535197A7C50 /* FirebaseDatabase in Frameworks */,
 			);
@@ -51,9 +54,17 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		45C7EB73302A6D8400339CB5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		76C6BC6B30DD2B9762552587 /* Omok */ = {
 			isa = PBXGroup;
 			children = (
+				45C7EB72302A6C5300339CB5 /* Omok.entitlements */,
 				45237A443020323200FF5852 /* Info.plist */,
 				E63DB3E3E6ECADD13F207EB5 /* OmokApp.swift */,
 				49B68FB861DCBC0298D2ACDA /* Assets.xcassets */,
@@ -79,6 +90,7 @@
 				76C6BC6B30DD2B9762552587 /* Omok */,
 				F82C6B1D4A93E5078D2C7F35 /* GoogleService-Info.plist */,
 				9B62168E35C5A762E8ECE4A5 /* Products */,
+				45C7EB73302A6D8400339CB5 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -106,6 +118,7 @@
 			packageProductDependencies = (
 				91D5BAEC0413F58127209A7C /* FirebaseAuth */,
 				E544E81C539A0906461D1F58 /* FirebaseDatabase */,
+				45C7EB74302A6D8400339CB5 /* FirebaseMessaging */,
 			);
 			productName = Omok;
 			productReference = 6B08753164041DCDFE195540 /* Omok.app */;
@@ -233,6 +246,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = Omok/Omok.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 10;
@@ -245,6 +259,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -331,6 +346,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = Omok/Omok.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 10;
@@ -343,6 +359,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -395,6 +412,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		45C7EB74302A6D8400339CB5 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F636992DC69339337EEBD70 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		91D5BAEC0413F58127209A7C /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4F636992DC69339337EEBD70 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

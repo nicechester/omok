@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayView: View {
     let uid: String
+    @Binding var pendingGameCode: String?
 
     @AppStorage(PlayerName.storageKey) private var playerName = ""
     @State private var roomCode = ""
@@ -62,8 +63,15 @@ struct PlayView: View {
             }
         }
         .onAppear {
-            if roomCode.isEmpty {
+            if pendingGameCode == nil && roomCode.isEmpty {
                 roomCode = generateRandomCode()
+            }
+        }
+        .onChange(of: pendingGameCode) { _, newCode in
+            if let code = newCode {
+                roomCode = code
+                selectedGameId = code
+                pendingGameCode = nil
             }
         }
     }
@@ -76,6 +84,6 @@ struct PlayView: View {
 
 #Preview {
     NavigationStack {
-        PlayView(uid: "user1")
+        PlayView(uid: "user1", pendingGameCode: .constant(nil))
     }
 }

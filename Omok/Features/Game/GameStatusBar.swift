@@ -30,7 +30,7 @@ struct GameStatusBar: View {
                             .foregroundColor(showCopyFeedback ? .green : .blue)
                     }
                     ShareLink(
-                        item: URL(string: "https://omok.example.com/?code=\(gameId)") ?? URL(fileURLWithPath: ""),
+                        item: URL(string: "omok://join?code=\(gameId)") ?? URL(fileURLWithPath: ""),
                         subject: Text("Join Omok"),
                         message: Text("Join my game with code: \(gameId)")
                     ) {
@@ -72,13 +72,20 @@ struct GameStatusBar: View {
                     .lineLimit(1)
                     .fontWeight(.semibold)
             }
-            // Show opponent's name from game state
+            // Show opponent's name from game state, with disconnected status if inactive
             else if let seat = players[color], let name = seat.displayName, !name.isEmpty {
-                Text(name)
-                    .font(.caption2)
-                    .lineLimit(1)
+                if seat.active == false {
+                    Text("\(name) (disconnected)")
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .foregroundColor(.gray)
+                } else {
+                    Text(name)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
             }
-            // Waiting for opponent
+            // Waiting for opponent (seat is empty)
             else {
                 Text("Waiting…")
                     .font(.caption2)
@@ -89,8 +96,8 @@ struct GameStatusBar: View {
 }
 
 #Preview {
-    let blackSeat = PlayerSeat(uid: "user1", joinedAt: 0, name: "Chester")
-    let whiteSeat = PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina")
+    let blackSeat = PlayerSeat(uid: "user1", joinedAt: 0, name: "Chester", active: true)
+    let whiteSeat = PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina", active: true)
     let emptyPlayersDict = [Stone: PlayerSeat]()
     let fullPlayersDict: [Stone: PlayerSeat] = [.black: blackSeat, .white: whiteSeat]
 

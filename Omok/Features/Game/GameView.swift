@@ -10,9 +10,11 @@ struct GameView: View {
     let playerName: String
     var onLeave: (() -> Void)? = nil
 
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
     @State private var viewModel: GameViewModel
     @State private var showExitConfirmation = false
+    @State private var showForfeitConfirmation = false
     @State private var isMicEnabled = false
     @State private var isSpeaking = false
     @State private var opponentSpeaking = false
@@ -175,7 +177,23 @@ struct GameView: View {
                             .font(.system(size: 18))
                             .foregroundColor(isMicEnabled ? .blue : .gray)
                     }
+                    
                     Spacer()
+                    
+                    // Show forfeit button only if user is a player (not spectator) and game is active
+                    if viewModel.mySeat != nil, viewModel.game?.status == .playing {
+                        Button(action: {
+                            showForfeitConfirmation = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "flag.fill")
+                                    .font(.system(size: 14))
+                                Text("Resign")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.red)
+                        }
+                    }
                 }
                 .frame(height: 44)
             }
@@ -260,6 +278,16 @@ struct GameView: View {
         } message: {
             Text("You'll stay in the game and can rejoin by entering the room code again.")
         }
+        .alert("Resign Game?", isPresented: $showForfeitConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Resign", role: .destructive) {
+                Task {
+                    await viewModel.forfeit()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to resign? Your opponent will win the game.")
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -271,6 +299,13 @@ struct GameView: View {
             await audioMessenger.startObservingSessions()
             recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
             await viewModel.start()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                viewModel.appDidEnterBackground()
+            } else if newPhase == .active {
+                viewModel.appDidBecomeActive()
+            }
         }
         .onDisappear {
             handleDisappear()
