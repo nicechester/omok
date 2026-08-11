@@ -16,6 +16,7 @@ struct RoomsView: View {
     private let repository = FirebaseGameRepository()
     @State private var pendingDeletion: PendingDeletion?
     @State private var pendingDeleteTask: Task<Void, Never>?
+    @State private var showNewGame = false
 
     private var rooms: [RecentRoom] {
         RecentRooms.decode(from: recentRoomsData)
@@ -67,6 +68,22 @@ struct RoomsView: View {
             }
         }
         .navigationTitle("Recent Rooms")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showNewGame = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("New Game")
+            }
+        }
+        .sheet(isPresented: $showNewGame) {
+            NewGameSheet(uid: uid, onJoin: { code in
+                showNewGame = false
+                onJoinRoom(code)
+            })
+        }
         .task {
             await syncRecentRoomsWithFirebase()
         }
