@@ -92,6 +92,18 @@ final class GameViewModel {
         timerTask = nil
     }
 
+    func markPlayerAsActive() {
+        Task {
+            try? await repository.updatePlayerActive(gameId: gameId, uid: uid, isActive: true)
+        }
+    }
+
+    func markPlayerAsDisconnected() {
+        Task {
+            try? await repository.updatePlayerActive(gameId: gameId, uid: uid, isActive: false)
+        }
+    }
+
     func appDidEnterBackground() {
         backgroundedAt = Date()
         beginBackgroundTask()
@@ -105,6 +117,13 @@ final class GameViewModel {
         UIApplication.shared.applicationIconBadgeNumber = 0
         if let game {
             updateTimerState(for: game, force: true)
+        }
+
+        // Update player's active status when coming back online
+        if mySeat != nil {
+            Task {
+                try? await repository.updatePlayerActive(gameId: gameId, uid: uid, isActive: true)
+            }
         }
 
         // Force listener to re-subscribe for fresh snapshot (fixes stale state like turn)
