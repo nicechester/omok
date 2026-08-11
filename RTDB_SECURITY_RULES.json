@@ -63,6 +63,16 @@
           },
           "rematch": {
             "$uid": { ".validate": "$uid === auth.uid && newData.val() === true" }
+          },
+          "undoRequest": {
+            "requestedBy": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+            "createdAt": { ".validate": "newData.isNumber()" }
+          },
+          "previousLastMove": {
+            ".validate": "newData.hasChildren(['r', 'c', 'color'])",
+            "r":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
+            "c":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 15" },
+            "color": { ".validate": "newData.val() === 'black' || newData.val() === 'white'" }
           }
         }
       }

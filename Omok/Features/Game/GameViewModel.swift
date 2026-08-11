@@ -41,6 +41,17 @@ final class GameViewModel {
         set { backgroundTaskBox.identifier = newValue }
     }
 
+    // A plain box for undo timeout task
+    private final class UndoTimeoutTaskBox {
+        var task: Task<Void, Never>?
+        deinit { task?.cancel() }
+    }
+    private let undoTimeoutTaskBox = UndoTimeoutTaskBox()
+    private var undoTimeoutTask: Task<Void, Never>? {
+        get { undoTimeoutTaskBox.task }
+        set { undoTimeoutTaskBox.task = newValue }
+    }
+
     init(gameId: String, uid: String, playerName: String, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
         self.uid = uid
@@ -142,7 +153,7 @@ final class GameViewModel {
 
     var canPlay: Bool {
         guard let game, let mySeat, game.status == .playing else { return false }
-        return game.turn == mySeat
+        return game.turn == mySeat && game.undoRequest == nil
     }
 
     var isMyWin: Bool {
@@ -190,6 +201,27 @@ final class GameViewModel {
         }
     }
 
+    var canRequestUndo: Bool {
+        guard let game, let mySeat, game.status == .playing else { return false }
+        return game.moveCount >= 2 && game.undoRequest == nil && game.turn != mySeat
+    }
+
+    var undoRequestPending: Bool {
+        game?.undoRequest != nil
+    }
+
+    var showUndoPrompt: Bool {
+        guard let game, let mySeat, let undoRequest = game.undoRequest else { return false }
+        // Show prompt to the opponent (not the requester)
+        return undoRequest.requestedBy != uid
+    }
+
+    var undoRequesterName: String? {
+        guard let game, let undoRequest = game.undoRequest else { return nil }
+        guard let requesterSeat = game.seat(of: undoRequest.requestedBy) else { return nil }
+        return game.players[requesterSeat]?.displayName
+    }
+
     // MARK: - Lifecycle
 
     func start() async {
@@ -234,6 +266,18 @@ final class GameViewModel {
 
         // Notify if in background
         notifyIfNeeded(state, previous: previousGame)
+
+        // Handle undo request state changes
+        if state.undoRequest != nil, previousGame?.undoRequest == nil {
+            // New undo request appeared; schedule timeout if we're the opponent
+            if let undoRequest = state.undoRequest, undoRequest.requestedBy != uid {
+                scheduleUndoAutoReject()
+            }
+        } else if state.undoRequest == nil, previousGame?.undoRequest != nil {
+            // Undo request was resolved; cancel timeout
+            undoTimeoutTask?.cancel()
+            undoTimeoutTask = nil
+        }
 
         guard state.status == .finished, bothVotedRematch else { return }
         // Both clients may observe the second vote and both race to reset;
@@ -284,6 +328,50 @@ final class GameViewModel {
             try await repository.updateSpeaking(gameId: gameId, uid: uid, isSpeaking: isSpeaking)
         } catch {
             print("Failed to update speaking state: \(error)")
+        }
+    }
+
+    func requestUndo() async {
+        do {
+            try await repository.requestUndo(gameId: gameId, uid: uid)
+        } catch let error as GameError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func approveUndo() async {
+        do {
+            try await repository.approveUndo(gameId: gameId, uid: uid)
+        } catch let error as GameError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func rejectUndo() async {
+        do {
+            try await repository.rejectUndo(gameId: gameId, uid: uid)
+        } catch let error as GameError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func scheduleUndoAutoReject() {
+        undoTimeoutTask?.cancel()
+        undoTimeoutTask = Task { @MainActor [weak self, gameId, repository] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 seconds
+            if Task.isCancelled { return }
+            do {
+                try await repository.rejectUndo(gameId: gameId, uid: uid)
+            } catch {
+                // Silently ignore: timeout reject is best-effort
+            }
         }
     }
 }

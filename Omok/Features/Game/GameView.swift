@@ -15,6 +15,7 @@ struct GameView: View {
     @State private var viewModel: GameViewModel
     @State private var showExitConfirmation = false
     @State private var showForfeitConfirmation = false
+    @State private var showUndoPrompt = false
     @State private var isMicEnabled = false
     @State private var isSpeaking = false
     @State private var opponentSpeaking = false
@@ -177,9 +178,36 @@ struct GameView: View {
                             .font(.system(size: 18))
                             .foregroundColor(isMicEnabled ? .blue : .gray)
                     }
-                    
+
                     Spacer()
-                    
+
+                    // Undo button
+                    if viewModel.canRequestUndo {
+                        Button(action: {
+                            Task {
+                                await viewModel.requestUndo()
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.uturn.left")
+                                    .font(.system(size: 14))
+                                Text("Undo")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    } else if viewModel.undoRequestPending {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.uturn.left")
+                                .font(.system(size: 14))
+                            Text("Undo…")
+                                .font(.subheadline)
+                        }
+                        .foregroundColor(.gray)
+                    }
+
+                    Spacer()
+
                     // Show forfeit button only if user is a player (not spectator) and game is active
                     if viewModel.mySeat != nil, viewModel.game?.status == .playing {
                         Button(action: {
@@ -288,6 +316,21 @@ struct GameView: View {
         } message: {
             Text("Are you sure you want to resign? Your opponent will win the game.")
         }
+        .alert("Undo Request", isPresented: $showUndoPrompt) {
+            Button("Cancel", role: .cancel) {
+                Task {
+                    await viewModel.rejectUndo()
+                }
+            }
+            Button("Approve") {
+                Task {
+                    await viewModel.approveUndo()
+                }
+            }
+        } message: {
+            let requesterName = viewModel.undoRequesterName ?? "Opponent"
+            Text("\(requesterName) wants to undo their last move. Do you approve?")
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -320,6 +363,9 @@ struct GameView: View {
                     opponentSpeaking = isOpponentSpeaking
                 }
             }
+        }
+        .onChange(of: viewModel.showUndoPrompt) { _, newValue in
+            showUndoPrompt = newValue
         }
     }
 

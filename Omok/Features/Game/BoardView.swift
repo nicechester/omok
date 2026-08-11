@@ -120,6 +120,8 @@ struct BoardView: View {
             .white: PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina", active: true)
         ],
         rematchVotes: [],
+        undoRequest: nil,
+        previousLastMove: nil,
         createdBy: "user1",
         speaking: [:]
     )
