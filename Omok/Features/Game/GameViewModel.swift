@@ -73,6 +73,7 @@ final class GameViewModel {
     func appDidBecomeActive() {
         backgroundedAt = nil
         endBackgroundTask()
+        UIApplication.shared.applicationIconBadgeNumber = 0
     }
 
     private func beginBackgroundTask() {
