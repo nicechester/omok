@@ -26,7 +26,7 @@
       "games": {
         "$gameId": {
           ".read": "auth != null",
-          ".write": "auth != null",
+          ".write": "auth != null && (newData.exists() || (data.child('createdBy').val() === auth.uid || data.child('players/black/uid').val() === auth.uid || data.child('players/white/uid').val() === auth.uid))",
           "status":    { ".validate": "newData.isString() && newData.val().matches(/^(waiting|playing|finished)$/)" },
           "turn":      { ".validate": "newData.val() === 'black' || newData.val() === 'white'" },
           "round":     { ".validate": "newData.isNumber() && newData.val() >= 0" },

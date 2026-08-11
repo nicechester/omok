@@ -272,6 +272,27 @@ final class FirebaseGameRepository: GameRepository {
         try await ref.updateChildValues(updates)
     }
 
+    // MARK: - Delete
+
+    func deleteGame(gameId: String, uid: String) async throws {
+        let ref = gameRef(gameId)
+        let snapshot = try await ref.getData()
+        guard let dict = snapshot.value as? [String: Any] else {
+            throw GameError.gameNotFound
+        }
+
+        let createdBy = dict["createdBy"] as? String
+        let players = dict["players"] as? [String: Any] ?? [:]
+        let isSeated = [Stone.black, Stone.white].contains { color in
+            (players[color.rawValue] as? [String: Any])?["uid"] as? String == uid
+        }
+        guard createdBy == uid || isSeated else {
+            throw GameError.deleteNotAllowed
+        }
+
+        try await ref.removeValue()
+    }
+
     // MARK: - Rematch
 
     func voteRematch(gameId: String, uid: String) async throws {

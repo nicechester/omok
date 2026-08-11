@@ -14,6 +14,7 @@ protocol GameRepository {
     func approveUndo(gameId: String, uid: String) async throws
     func rejectUndo(gameId: String, uid: String) async throws
     func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws
+    func deleteGame(gameId: String, uid: String) async throws
 }
 
 enum GameError: LocalizedError {
@@ -26,6 +27,7 @@ enum GameError: LocalizedError {
     case undoAlreadyPending
     case noUndoPending
     case turnAlreadyAdvanced
+    case deleteNotAllowed
 
     var errorDescription: String? {
         switch self {
@@ -47,6 +49,8 @@ enum GameError: LocalizedError {
             return "No undo request to reject."
         case .turnAlreadyAdvanced:
             return "Turn already advanced."
+        case .deleteNotAllowed:
+            return "Can't delete a room while a game is in progress."
         }
     }
 }

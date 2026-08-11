@@ -300,6 +300,12 @@ final class GameViewModel {
 
     private func handle(_ state: GameState?) async {
         let previousGame = game
+        if state == nil && previousGame != nil {
+            // Game was deleted by opponent
+            errorMessage = "This game was deleted"
+            game = nil
+            return
+        }
         guard let state else { return }
         game = state
 

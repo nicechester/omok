@@ -24,4 +24,16 @@ enum RecentRooms {
         if rooms.count > maxCount { rooms = Array(rooms.prefix(maxCount)) }
         return encode(rooms)
     }
+
+    static func remove(code: String, from data: Data) -> Data {
+        let rooms = decode(from: data).filter { $0.code != code }
+        return encode(rooms)
+    }
+
+    static func restore(_ room: RecentRoom, at index: Int, in data: Data) -> Data {
+        var rooms = decode(from: data)
+        let clamped = min(max(index, 0), rooms.count)
+        rooms.insert(room, at: clamped)
+        return encode(rooms)
+    }
 }
