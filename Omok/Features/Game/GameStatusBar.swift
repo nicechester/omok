@@ -7,18 +7,33 @@ struct GameStatusBar: View {
     let myName: String
     let players: [Stone: PlayerSeat]
     let remainingSeconds: Int?
+    var onLeave: (() -> Void)? = nil
 
     @State private var showCopyFeedback = false
 
     var body: some View {
         VStack(spacing: 4) {
-            // Top row: room code + status
+            // Top row: room code + timer + action buttons
             HStack(spacing: 12) {
-                HStack(spacing: 6) {
-                    Text(gameId)
-                        .font(.headline)
-                        .monospaced()
+                Text(gameId)
+                    .font(.headline)
+                    .monospaced()
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                if let remainingSeconds {
+                    Text("\(remainingSeconds)s")
+                        .font(.subheadline)
                         .fontWeight(.semibold)
+                        .foregroundColor(timerColor(remainingSeconds))
+                }
+
+                Spacer()
+
+                // Action buttons: Copy, Share, Leave
+                HStack(spacing: 12) {
+                    // Copy button
                     Button(action: {
                         UIPasteboard.general.string = gameId
                         showCopyFeedback = true
@@ -27,40 +42,41 @@ struct GameStatusBar: View {
                         }
                     }) {
                         Image(systemName: showCopyFeedback ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 11))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(showCopyFeedback ? .green : .blue)
+                            .padding(8)
                     }
+
+                    // Share button
                     ShareLink(
                         item: URL(string: "omok://join?code=\(gameId)") ?? URL(fileURLWithPath: ""),
                         subject: Text("Join Omok"),
                         message: Text("Join my game with code: \(gameId)")
                     ) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 11))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.blue)
+                            .padding(8)
                     }
-                }
 
-                Spacer()
-
-                HStack(spacing: 8) {
-                    Text(statusText)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-
-                    if let remainingSeconds {
-                        Text("\(remainingSeconds)s")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(timerColor(remainingSeconds))
+                    // Leave button
+                    Button(action: { onLeave?() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.red)
+                            .padding(8)
                     }
                 }
             }
 
-            // Bottom row: both players
+            // Bottom row: players + turn indicator
             HStack(spacing: 16) {
                 playerBadge(for: .black)
                 playerBadge(for: .white)
                 Spacer()
+                Text(statusText)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
             }
         }
         .padding(.horizontal, 12)
@@ -122,11 +138,11 @@ struct GameStatusBar: View {
     let fullPlayersDict: [Stone: PlayerSeat] = [.black: blackSeat, .white: whiteSeat]
 
     VStack(spacing: 16) {
-        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: nil)
-        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 15)
-        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:], remainingSeconds: nil)
-        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict, remainingSeconds: nil)
-        GameStatusBar(gameId: "test3", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: 3)
-        GameStatusBar(gameId: "test4", statusText: "Opponent's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 1)
+        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: nil, onLeave: { })
+        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 15, onLeave: { })
+        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:], remainingSeconds: nil, onLeave: { })
+        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict, remainingSeconds: nil, onLeave: { })
+        GameStatusBar(gameId: "test3", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: 3, onLeave: { })
+        GameStatusBar(gameId: "test4", statusText: "Opponent's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 1, onLeave: { })
     }
 }
