@@ -90,6 +90,8 @@ final class GameViewModel {
     func appDidEnterBackground() {
         backgroundedAt = Date()
         beginBackgroundTask()
+        timerTask?.cancel()
+        timerTask = nil
     }
 
     func appDidBecomeActive() {
@@ -418,6 +420,13 @@ final class GameViewModel {
     }
 
     private func updateTimerState(for state: GameState, force: Bool) {
+        // Pause timer when app is backgrounded
+        guard currentScenePhase == .active else {
+            timerTask?.cancel()
+            timerTask = nil
+            return
+        }
+
         // Stop ticking if undo request is pending
         if state.undoRequest != nil {
             timerTask?.cancel()

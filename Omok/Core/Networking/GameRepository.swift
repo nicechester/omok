@@ -2,6 +2,7 @@ import Foundation
 
 protocol GameRepository {
     func listenToGame(gameId: String) -> AsyncStream<GameState?>
+    func fetchGame(gameId: String) async throws -> GameState?
     func createGame(gameId: String, creatorUid: String, creatorName: String, timerDuration: Int?) async throws
     func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone
     func placeStone(gameId: String, at cell: Cell, uid: String) async throws
