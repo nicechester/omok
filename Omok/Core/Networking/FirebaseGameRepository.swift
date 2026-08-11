@@ -387,7 +387,8 @@ final class FirebaseGameRepository: GameRepository {
                 }
                 let joinedAt = seatDict["joinedAt"] as? Int ?? 0
                 let name = seatDict["name"] as? String
-                players[color] = PlayerSeat(uid: uid, joinedAt: joinedAt, name: name)
+                let active = seatDict["active"] as? Bool
+                players[color] = PlayerSeat(uid: uid, joinedAt: joinedAt, name: name, active: active)
             }
         }
 

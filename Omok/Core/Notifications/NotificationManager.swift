@@ -2,6 +2,8 @@ import Foundation
 import UIKit
 import UserNotifications
 import Observation
+import FirebaseDatabase
+import FirebaseAuth
 
 @MainActor
 @Observable
@@ -10,6 +12,20 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     var authorizationStatus: UNAuthorizationStatus = .notDetermined
     var pendingGameId: String?
+    var fcmToken: String? {
+        didSet {
+            if let token = fcmToken {
+                saveTokenToDatabase(token)
+            }
+        }
+    }
+    
+    private func saveTokenToDatabase(_ token: String) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        Database.database().reference()
+            .child("omok/users").child(uid).child("fcmToken")
+            .setValue(token)
+    }
 
     private override init() {
         super.init()

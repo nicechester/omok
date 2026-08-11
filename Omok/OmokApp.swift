@@ -1,9 +1,30 @@
 import SwiftUI
 import Firebase
+import FirebaseMessaging
 import UserNotifications
+
+class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        Messaging.messaging().delegate = self
+        application.registerForRemoteNotifications()
+        return true
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+    }
+    
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken else { return }
+        Task { @MainActor in
+            NotificationManager.shared.fcmToken = token
+        }
+    }
+}
 
 @main
 struct OmokApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @State private var authService: AuthService
     @State private var isInitialized = false
     @State private var pendingGameCode: String?
@@ -35,8 +56,10 @@ struct OmokApp: App {
                 } else {
                     ProgressView("Initializing...")
                         .task {
-                            // Initialize NotificationManager on the main actor
-                            _ = NotificationManager.shared
+                            // Request notification permission if enabled in settings
+                            if NotificationSettings.isEnabled {
+                                _ = await NotificationManager.shared.requestAuthorization()
+                            }
                             try? await authService.signInAnonymously()
                             isInitialized = true
                         }
