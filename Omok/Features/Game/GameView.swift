@@ -345,6 +345,7 @@ struct GameView: View {
             await viewModel.start()
         }
         .onChange(of: scenePhase) { _, newPhase in
+            viewModel.setScenePhase(newPhase)
             if newPhase == .background {
                 // Pause audio capture when backgrounding
                 if isMicEnabled {
