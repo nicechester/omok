@@ -8,6 +8,7 @@ struct PlayView: View {
     @AppStorage(TurnTimer.storageKey) private var timerDurationPreference = 0
     @State private var roomCode = ""
     @State private var selectedGameId: String?
+    @FocusState private var isRoomCodeFocused: Bool
 
     var body: some View {
         VStack(spacing: 20) {
@@ -30,6 +31,11 @@ struct PlayView: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .monospaced()
+                    .focused($isRoomCodeFocused)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        isRoomCodeFocused = false
+                    }
                     .onChange(of: roomCode) { _, newValue in
                         roomCode = newValue
                             .lowercased()
@@ -68,6 +74,9 @@ struct PlayView: View {
             Spacer()
         }
         .padding()
+        .onTapGesture {
+            isRoomCodeFocused = false
+        }
         .navigationDestination(isPresented: Binding(
             get: { selectedGameId != nil },
             set: { if !$0 { selectedGameId = nil } }
