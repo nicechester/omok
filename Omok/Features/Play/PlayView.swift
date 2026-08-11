@@ -8,7 +8,10 @@ struct PlayView: View {
     @AppStorage(TurnTimer.storageKey) private var timerDurationPreference = 0
     @State private var roomCode = ""
     @State private var selectedGameId: String?
+    @State private var isExistingGame = false
+    @State private var existingTimerDuration: Int?
     @FocusState private var isRoomCodeFocused: Bool
+    private let repository = FirebaseGameRepository()
 
     var body: some View {
         VStack(spacing: 20) {
@@ -49,14 +52,20 @@ struct PlayView: View {
                 Text("Turn Timer")
                     .font(.subheadline)
                     .foregroundColor(.gray)
-                Picker("Turn Timer", selection: $timerDurationPreference) {
-                    Text("Off").tag(0)
-                    Text("10s").tag(10)
-                    Text("20s").tag(20)
-                    Text("30s").tag(30)
-                    Text("60s").tag(60)
+                if isExistingGame {
+                    Text(existingTimerDuration.map { "\($0)s (set by room creator)" } ?? "Off (set by room creator)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else {
+                    Picker("Turn Timer", selection: $timerDurationPreference) {
+                        Text("Off").tag(0)
+                        Text("10s").tag(10)
+                        Text("20s").tag(20)
+                        Text("30s").tag(30)
+                        Text("60s").tag(60)
+                    }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
             }
 
             Button(action: {
@@ -88,7 +97,7 @@ struct PlayView: View {
                     uid: uid,
                     playerName: playerName,
                     onLeave: { selectedGameId = nil },
-                    timerDuration: timerDurationPreference == 0 ? nil : timerDurationPreference
+                    timerDuration: isExistingGame ? nil : (timerDurationPreference == 0 ? nil : timerDurationPreference)
                 )
                     .navigationBarBackButtonHidden()
             }
@@ -103,6 +112,29 @@ struct PlayView: View {
                 roomCode = code
                 selectedGameId = code
                 pendingGameCode = nil
+            }
+        }
+        .task(id: roomCode) {
+            let code = roomCode.trimmingCharacters(in: .whitespaces)
+            guard code.count == 5 else {
+                isExistingGame = false
+                existingTimerDuration = nil
+                return
+            }
+            try? await Task.sleep(nanoseconds: 400_000_000) // debounce
+            if Task.isCancelled { return }
+            do {
+                if let game = try await repository.fetchGame(gameId: code) {
+                    isExistingGame = true
+                    existingTimerDuration = game.timerDuration
+                } else {
+                    isExistingGame = false
+                    existingTimerDuration = nil
+                }
+            } catch {
+                // Network error: fall back to showing picker (safe default)
+                isExistingGame = false
+                existingTimerDuration = nil
             }
         }
     }

@@ -34,6 +34,13 @@ final class FirebaseGameRepository: GameRepository {
         }
     }
 
+    // MARK: - Fetch (one-shot, read-only)
+
+    func fetchGame(gameId: String) async throws -> GameState? {
+        let snapshot = try await gameRef(gameId).getData()
+        return Self.decodeGameState(from: snapshot)
+    }
+
     // MARK: - Create
 
     func createGame(gameId: String, creatorUid: String, creatorName: String, timerDuration: Int?) async throws {
@@ -522,10 +529,15 @@ final class FirebaseGameRepository: GameRepository {
         }
 
         // Update: flip turn
-        let updates: [String: Any] = [
+        var updates: [String: Any] = [
             "turn": turn.opposite.rawValue,
             "updatedAt": Int(Date().timeIntervalSince1970 * 1000)
         ]
+
+        // Re-stamp turnStartedAt if timer is enabled (critical fix for continuous turning)
+        if dict["timerDuration"] != nil {
+            updates["turnStartedAt"] = Int(Date().timeIntervalSince1970 * 1000)
+        }
 
         try await ref.updateChildValues(updates)
     }
