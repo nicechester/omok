@@ -123,7 +123,9 @@ struct BoardView: View {
         undoRequest: nil,
         previousLastMove: nil,
         createdBy: "user1",
-        speaking: [:]
+        speaking: [:],
+        timerDuration: nil,
+        turnStartedAt: nil
     )
 
     BoardView(

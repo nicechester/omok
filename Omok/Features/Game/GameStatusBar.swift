@@ -6,6 +6,7 @@ struct GameStatusBar: View {
     let mySeat: Stone?
     let myName: String
     let players: [Stone: PlayerSeat]
+    let remainingSeconds: Int?
 
     @State private var showCopyFeedback = false
 
@@ -41,9 +42,18 @@ struct GameStatusBar: View {
 
                 Spacer()
 
-                Text(statusText)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                HStack(spacing: 8) {
+                    Text(statusText)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    if let remainingSeconds {
+                        Text("\(remainingSeconds)s")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(timerColor(remainingSeconds))
+                    }
+                }
             }
 
             // Bottom row: both players
@@ -56,6 +66,16 @@ struct GameStatusBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color(.systemGray6))
+    }
+
+    private func timerColor(_ seconds: Int) -> Color {
+        if seconds <= 2 {
+            return .red
+        } else if seconds <= 4 {
+            return .orange
+        } else {
+            return .primary
+        }
     }
 
     private func playerBadge(for color: Stone) -> some View {
@@ -102,9 +122,11 @@ struct GameStatusBar: View {
     let fullPlayersDict: [Stone: PlayerSeat] = [.black: blackSeat, .white: whiteSeat]
 
     VStack(spacing: 16) {
-        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict)
-        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict)
-        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:])
-        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict)
+        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: nil)
+        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 15)
+        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:], remainingSeconds: nil)
+        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict, remainingSeconds: nil)
+        GameStatusBar(gameId: "test3", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: 3)
+        GameStatusBar(gameId: "test4", statusText: "Opponent's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 1)
     }
 }

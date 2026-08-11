@@ -5,6 +5,7 @@ struct PlayView: View {
     @Binding var pendingGameCode: String?
 
     @AppStorage(PlayerName.storageKey) private var playerName = ""
+    @AppStorage(TurnTimer.storageKey) private var timerDurationPreference = 0
     @State private var roomCode = ""
     @State private var selectedGameId: String?
 
@@ -38,6 +39,20 @@ struct PlayView: View {
                     }
             }
 
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Turn Timer")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                Picker("Turn Timer", selection: $timerDurationPreference) {
+                    Text("Off").tag(0)
+                    Text("10s").tag(10)
+                    Text("20s").tag(20)
+                    Text("30s").tag(30)
+                    Text("60s").tag(60)
+                }
+                .pickerStyle(.segmented)
+            }
+
             Button(action: {
                 let trimmed = roomCode.trimmingCharacters(in: .whitespaces)
                 if !trimmed.isEmpty {
@@ -58,7 +73,13 @@ struct PlayView: View {
             set: { if !$0 { selectedGameId = nil } }
         )) {
             if let gameId = selectedGameId {
-                GameView(gameId: gameId, uid: uid, playerName: playerName, onLeave: { selectedGameId = nil })
+                GameView(
+                    gameId: gameId,
+                    uid: uid,
+                    playerName: playerName,
+                    onLeave: { selectedGameId = nil },
+                    timerDuration: timerDurationPreference == 0 ? nil : timerDurationPreference
+                )
                     .navigationBarBackButtonHidden()
             }
         }
