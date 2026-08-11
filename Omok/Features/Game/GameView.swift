@@ -241,7 +241,8 @@ struct GameView: View {
                 mySeat: viewModel.mySeat,
                 myName: playerName,
                 players: viewModel.game?.players ?? [:],
-                remainingSeconds: viewModel.remainingSeconds
+                remainingSeconds: viewModel.remainingSeconds,
+                onLeave: { onLeave?() }
             )
 
             BoardView(
@@ -287,22 +288,6 @@ struct GameView: View {
             resultOverlay
         }
         .navigationBarBackButtonHidden()
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                let isWaiting = viewModel.game?.status == .waiting && viewModel.mySeat == nil
-                let buttonText = isWaiting ? "Cancel" : "Leave"
-
-                Button(buttonText) {
-                    if viewModel.game?.status == .finished {
-                        onLeave?()
-                    } else if isWaiting {
-                        onLeave?()
-                    } else {
-                        showExitConfirmation = true
-                    }
-                }
-            }
-        }
         .alert("Leave Game?", isPresented: $showExitConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Leave", role: .destructive) {
@@ -388,6 +373,9 @@ struct GameView: View {
     }
 
     private func handleDisappear() {
+        // Pause timer when leaving GameView (navigating to other tabs or screens)
+        viewModel.pauseTimer()
+
         Task {
             await audioMessenger.cleanup()
             if isMicEnabled {

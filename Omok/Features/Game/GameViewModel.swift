@@ -87,6 +87,11 @@ final class GameViewModel {
         currentScenePhase = phase
     }
 
+    func pauseTimer() {
+        timerTask?.cancel()
+        timerTask = nil
+    }
+
     func appDidEnterBackground() {
         backgroundedAt = Date()
         beginBackgroundTask()
@@ -462,7 +467,13 @@ final class GameViewModel {
     private func startTicking(turn: Stone, turnStartedAt: Int, duration: Int) {
         timerTask = Task { @MainActor [weak self, gameId, repository] in
             guard let self else { return }
+            // Only tick if it's THIS player's turn (not watching opponent's turn)
+            guard turn == self.mySeat else { return }
+
             while !Task.isCancelled {
+                // Stop ticking if app backgrounded or view disappeared
+                guard self.currentScenePhase == .active else { return }
+
                 let now = Int(Date().timeIntervalSince1970 * 1000)
                 let elapsed = now - turnStartedAt
                 let remaining = max(0, duration * 1000 - elapsed)
