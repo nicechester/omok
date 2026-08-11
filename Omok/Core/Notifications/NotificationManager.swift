@@ -92,6 +92,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        UIApplication.shared.applicationIconBadgeNumber = 0
         completionHandler([.banner, .sound, .badge])
     }
 
@@ -100,6 +101,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
+        UIApplication.shared.applicationIconBadgeNumber = 0
         let userInfo = response.notification.request.content.userInfo
         if let gameId = userInfo["gameId"] as? String {
             Task { @MainActor in
