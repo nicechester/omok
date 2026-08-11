@@ -32,7 +32,7 @@ struct GameStatusBar: View {
                 Spacer()
 
                 // Action buttons: Copy, Share, Leave
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     // Copy button
                     Button(action: {
                         UIPasteboard.general.string = gameId
@@ -43,9 +43,12 @@ struct GameStatusBar: View {
                     }) {
                         Image(systemName: showCopyFeedback ? "checkmark" : "doc.on.doc")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(showCopyFeedback ? .green : .blue)
-                            .padding(8)
+                            .foregroundColor(showCopyFeedback ? .green : .primary)
+                            .frame(width: 32, height: 32)
+                            .background(Color(.systemGray6))
+                            .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
 
                     // Share button
                     ShareLink(
@@ -55,17 +58,23 @@ struct GameStatusBar: View {
                     ) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.blue)
-                            .padding(8)
+                            .foregroundColor(.primary)
+                            .frame(width: 32, height: 32)
+                            .background(Color(.systemGray6))
+                            .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
 
                     // Leave button
                     Button(action: { onLeave?() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.red)
-                            .padding(8)
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 32, height: 32)
+                            .background(Color(.systemGray6))
+                            .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
 
