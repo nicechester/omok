@@ -13,6 +13,7 @@ struct GameView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
+    @AppStorage(AudioOutputSettings.storageKey) private var audioOutputLevel: Int = AudioOutputSettings.defaultLevel.rawValue
     @State private var viewModel: GameViewModel
     @State private var showExitConfirmation = false
     @State private var showForfeitConfirmation = false
@@ -49,6 +50,13 @@ struct GameView: View {
             repository: FirebaseGameRepository()
         ))
         _audioMessenger = State(initialValue: AudioMessenger(gameId: gameId, uid: uid))
+    }
+
+    private func applyOutputGain() {
+        let level = AudioOutputSettings.VolumeLevel(rawValue: audioOutputLevel) ?? .normal
+        Task {
+            await audioPlaybackEngine.setOutputGain(level.multiplier)
+        }
     }
 
     private func toggleMicrophone() {
@@ -134,6 +142,10 @@ struct GameView: View {
             do {
                 // Start playback engine
                 try await audioPlaybackEngine.start()
+
+                // Apply stored audio output gain preference
+                let level = AudioOutputSettings.VolumeLevel(rawValue: audioOutputLevel) ?? .normal
+                await audioPlaybackEngine.setOutputGain(level.multiplier)
 
                 // Subscribe to playback engine's audio publishers (nonisolated, no await needed)
                 playbackSamplesCancellable = audioPlaybackEngine.audioSamplesPublisher

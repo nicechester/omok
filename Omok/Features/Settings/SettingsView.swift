@@ -3,6 +3,7 @@ import UserNotifications
 
 struct SettingsView: View {
     @AppStorage(NotificationSettings.storageKey) private var notificationsEnabled = true
+    @AppStorage(AudioOutputSettings.storageKey) private var audioOutputLevel = AudioOutputSettings.defaultLevel.rawValue
     @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
 
     var body: some View {
@@ -25,6 +26,14 @@ struct SettingsView: View {
                         )
                         .foregroundColor(.orange)
                         .font(.caption)
+                    }
+                }
+
+                Section("Audio") {
+                    Picker("Opponent Volume", selection: $audioOutputLevel) {
+                        ForEach(AudioOutputSettings.VolumeLevel.allCases, id: \.self) { level in
+                            Text(level.label).tag(level.rawValue)
+                        }
                     }
                 }
 
