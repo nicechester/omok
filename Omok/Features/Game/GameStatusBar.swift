@@ -69,7 +69,7 @@ struct GameStatusBar: View {
                     Button(action: { onLeave?() }) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.primary)
                             .frame(width: 32, height: 32)
                             .background(Color(.systemGray6))
                             .clipShape(Circle())

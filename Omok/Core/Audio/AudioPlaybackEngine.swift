@@ -16,6 +16,7 @@ actor AudioPlaybackEngine {
     private var receiveTimeoutTimer: Timer?
     private var lastReceiveTime: Date = Date()
     private let receiveTimeoutInterval: TimeInterval = 0.4
+    private var outputGain: Float = 1.8
 
     nonisolated var audioLevelPublisher: AnyPublisher<Float, Never> {
         audioBuffer.audioLevelPublisher.eraseToAnyPublisher()
@@ -79,6 +80,11 @@ actor AudioPlaybackEngine {
         logger.debug("Audio playback engine stopped")
     }
 
+    /// Set the output gain multiplier for audio playback.
+    func setOutputGain(_ gain: Float) {
+        self.outputGain = gain
+    }
+
     /// Enqueue a received frame for playback.
     /// Drops frames out of order or already scheduled.
     /// Implements jitter buffering: holds until 2 frames before scheduling.
@@ -110,13 +116,15 @@ actor AudioPlaybackEngine {
     /// Schedule a frame for playback on the AVAudioPlayerNode.
     private func scheduleFrame(_ frame: AudioFrame) {
         let floatSamples = AudioFrame.dequantize(frame.samples)
-        guard let audioBuffer = createAudioBuffer(from: floatSamples) else {
+        let gain = outputGain
+        let amplified = floatSamples.map { max(-1.0, min(1.0, $0 * gain)) }
+        guard let audioBuffer = createAudioBuffer(from: amplified) else {
             logger.error("Failed to create audio buffer for frame \(frame.sequence)")
             return
         }
 
         // Feed rectified (absolute value) samples into the waveform buffer
-        let rectifiedSamples = floatSamples.map { abs($0) }
+        let rectifiedSamples = amplified.map { abs($0) }
         self.audioBuffer.append(samples: rectifiedSamples)
 
         playerNode.scheduleBuffer(audioBuffer)
