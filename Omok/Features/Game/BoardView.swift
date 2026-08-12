@@ -116,8 +116,8 @@ struct BoardView: View {
         result: nil,
         winningLine: nil,
         players: [
-            .black: PlayerSeat(uid: "user1", joinedAt: 0, name: "Chester", active: true),
-            .white: PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina", active: true)
+            .black: PlayerSeat(uid: "user1", color: .black, joinedAt: 0, name: "Chester", active: true),
+            .white: PlayerSeat(uid: "user2", color: .white, joinedAt: 0, name: "Mina", active: true)
         ],
         rematchVotes: [],
         undoRequest: nil,

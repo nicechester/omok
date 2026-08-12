@@ -14,6 +14,7 @@ enum GameResult: String, Codable, Sendable {
 
 struct PlayerSeat: Codable, Sendable {
     let uid: String
+    let color: Stone
     let joinedAt: Int
     let name: String?
     let active: Bool?
