@@ -2,6 +2,7 @@ import SwiftUI
 import UserNotifications
 
 struct SettingsView: View {
+    @Environment(AuthService.self) private var authService
     @AppStorage(NotificationSettings.storageKey) private var notificationsEnabled = true
     @AppStorage(AudioOutputSettings.storageKey) private var audioOutputLevel = AudioOutputSettings.defaultLevel.rawValue
     @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
@@ -26,6 +27,29 @@ struct SettingsView: View {
                         )
                         .foregroundColor(.orange)
                         .font(.caption)
+                    }
+                }
+
+                Section("Connection") {
+                    HStack {
+                        ConnectionStatusIndicator(status: authService.connectionStatus, size: .small)
+
+                        switch authService.connectionStatus {
+                        case .connecting:
+                            Text("Connecting…")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        case .connected:
+                            Text("Connected")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        case .error:
+                            Text("Connection Error")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+
+                        Spacer()
                     }
                 }
 
@@ -56,7 +80,9 @@ struct SettingsView: View {
 }
 
 #Preview {
-    NavigationStack {
+    let authService = AuthService()
+    return NavigationStack {
         SettingsView()
+            .environment(authService)
     }
 }

@@ -26,7 +26,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
 struct OmokApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @State private var authService: AuthService
-    @State private var isInitialized = false
     @State private var pendingGameCode: String?
     @AppStorage(PlayerName.storageKey) private var playerName = ""
 
@@ -38,7 +37,7 @@ struct OmokApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if isInitialized, let uid = authService.currentUserID {
+                if let uid = authService.currentUserID {
                     if !PlayerName.isValid(playerName) {
                         NavigationStack {
                             NicknameView(isFirstRun: true)
@@ -54,17 +53,22 @@ struct OmokApp: App {
                             }
                     }
                 } else {
-                    ProgressView("Initializing...")
-                        .task {
-                            // Request notification permission if enabled in settings
-                            if NotificationSettings.isEnabled {
-                                _ = await NotificationManager.shared.requestAuthorization()
+                    LaunchStatusView(
+                        status: authService.connectionStatus,
+                        onRetry: {
+                            Task {
+                                await authService.signInAnonymously()
                             }
-                            try? await authService.signInAnonymously()
-                            isInitialized = true
                         }
+                    )
+                    .task {
+                        async let notif: Void = requestNotificationPermissionIfNeeded()
+                        async let signIn: Void = authService.signInAnonymously()
+                        _ = await (notif, signIn)
+                    }
                 }
             }
+            .environment(authService)
             .onOpenURL { url in
                 handleDeepLink(url)
             }
@@ -73,6 +77,12 @@ struct OmokApp: App {
                     pendingGameCode = gameId
                 }
             }
+        }
+    }
+
+    private func requestNotificationPermissionIfNeeded() async {
+        if NotificationSettings.isEnabled {
+            _ = await NotificationManager.shared.requestAuthorization()
         }
     }
     
