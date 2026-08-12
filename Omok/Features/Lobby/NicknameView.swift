@@ -8,12 +8,12 @@ struct NicknameView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text(isFirstRun ? "Choose a nickname" : "Change nickname")
+            Text(isFirstRun ? "What's your name?" : "Change name")
                 .font(.title2)
                 .fontWeight(.bold)
 
             VStack(alignment: .leading, spacing: 8) {
-                TextField("Nickname", text: $draft)
+                TextField(isFirstRun ? "Name" : "Nickname", text: $draft)
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                     .onChange(of: draft) { _, newValue in
@@ -38,7 +38,7 @@ struct NicknameView: View {
             Spacer()
         }
         .padding()
-        .navigationTitle("Nickname")
+        .navigationTitle(isFirstRun ? "What's your name?" : "Change name")
         .onAppear {
             draft = storedName
         }
