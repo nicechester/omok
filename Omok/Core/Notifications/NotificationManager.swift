@@ -31,7 +31,6 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         super.init()
         Task {
             await checkAuthorizationStatus()
-            UNUserNotificationCenter.current().delegate = self
         }
     }
 

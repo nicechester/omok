@@ -7,6 +7,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         Messaging.messaging().delegate = self
         application.registerForRemoteNotifications()
+
+        // Set up notification delegate early
+        UNUserNotificationCenter.current().delegate = NotificationManager.shared
+
+        // Handle cold start notification tap
+        if let remoteNotification = launchOptions?[UIApplication.LaunchOptionsKey.remoteNotification] as? [AnyHashable: Any],
+           let gameId = remoteNotification["gameId"] as? String {
+            Task { @MainActor in
+                NotificationManager.shared.pendingGameId = gameId
+            }
+        }
+
         return true
     }
     
