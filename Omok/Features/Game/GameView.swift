@@ -459,6 +459,8 @@ struct GameView: View {
     }
 
     private func handleDisappear() {
+        viewModel.markPlayerAsDisconnected()
+
         // Pause timer when leaving GameView (navigating to other tabs or screens)
         viewModel.pauseTimer()
 
