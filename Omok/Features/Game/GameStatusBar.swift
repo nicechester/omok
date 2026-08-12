@@ -7,6 +7,7 @@ struct GameStatusBar: View {
     let myName: String
     let players: [Stone: PlayerSeat]
     let remainingSeconds: Int?
+    let scores: [String: Int]
     var onLeave: (() -> Void)? = nil
 
     @State private var showCopyFeedback = false
@@ -112,22 +113,40 @@ struct GameStatusBar: View {
 
             // Show user's own name if this is their seat
             if let myColor = mySeat, color == myColor, !myName.isEmpty {
-                Text(myName)
-                    .font(.caption2)
-                    .lineLimit(1)
-                    .fontWeight(.semibold)
+                HStack(spacing: 2) {
+                    Text(myName)
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .fontWeight(.semibold)
+
+                    if let score = scores[players[color]?.uid ?? ""] {
+                        Text("\(score)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+                    }
+                }
             }
             // Show opponent's name from game state, with disconnected status if inactive
             else if let seat = players[color], let name = seat.displayName, !name.isEmpty {
-                if seat.active == false {
-                    Text("\(name) (disconnected)")
-                        .font(.caption2)
-                        .lineLimit(1)
-                        .foregroundColor(.gray)
-                } else {
-                    Text(name)
-                        .font(.caption2)
-                        .lineLimit(1)
+                HStack(spacing: 2) {
+                    if seat.active == false {
+                        Text("\(name) (disconnected)")
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .foregroundColor(.gray)
+                    } else {
+                        Text(name)
+                            .font(.caption2)
+                            .lineLimit(1)
+                    }
+
+                    if let score = scores[seat.uid] {
+                        Text("\(score)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+                    }
                 }
             }
             // Waiting for opponent (seat is empty)
@@ -146,12 +165,13 @@ struct GameStatusBar: View {
     let emptyPlayersDict = [Stone: PlayerSeat]()
     let fullPlayersDict: [Stone: PlayerSeat] = [.black: blackSeat, .white: whiteSeat]
 
+    let scores = ["user1": 3, "user2": 1]
     VStack(spacing: 16) {
-        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: nil, onLeave: { })
-        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 15, onLeave: { })
-        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:], remainingSeconds: nil, onLeave: { })
-        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict, remainingSeconds: nil, onLeave: { })
-        GameStatusBar(gameId: "test3", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: 3, onLeave: { })
-        GameStatusBar(gameId: "test4", statusText: "Opponent's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 1, onLeave: { })
+        GameStatusBar(gameId: "abc12", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: nil, scores: scores, onLeave: { })
+        GameStatusBar(gameId: "xyz99", statusText: "Chester's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 15, scores: scores, onLeave: { })
+        GameStatusBar(gameId: "test1", statusText: "Waiting for opponent", mySeat: .black, myName: "Chester", players: [:], remainingSeconds: nil, scores: scores, onLeave: { })
+        GameStatusBar(gameId: "test2", statusText: "Spectating", mySeat: nil, myName: "Chester", players: emptyPlayersDict, remainingSeconds: nil, scores: scores, onLeave: { })
+        GameStatusBar(gameId: "test3", statusText: "Your turn", mySeat: .black, myName: "Chester", players: fullPlayersDict, remainingSeconds: 3, scores: scores, onLeave: { })
+        GameStatusBar(gameId: "test4", statusText: "Opponent's turn", mySeat: .white, myName: "Mina", players: fullPlayersDict, remainingSeconds: 1, scores: scores, onLeave: { })
     }
 }
