@@ -257,6 +257,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Omok;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Allow speech recognition to show live captions of voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -357,6 +358,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Omok;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Allow speech recognition to show live captions of voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
