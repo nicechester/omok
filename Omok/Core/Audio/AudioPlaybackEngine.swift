@@ -6,6 +6,7 @@ import os
 actor AudioPlaybackEngine {
     nonisolated private let audioBuffer = AudioStreamBuffer(capacity: 4410)
     private let isReceivingAudioSubject = PassthroughSubject<Bool, Never>()
+    private let rawPlaybackSamplesSubject = PassthroughSubject<[Float], Never>()
 
     private let audioEngine = AVAudioEngine()
     private let playerNode = AVAudioPlayerNode()
@@ -28,6 +29,10 @@ actor AudioPlaybackEngine {
 
     nonisolated var isReceivingAudioPublisher: AnyPublisher<Bool, Never> {
         isReceivingAudioSubject.eraseToAnyPublisher()
+    }
+
+    nonisolated var rawPlaybackSamplesPublisher: AnyPublisher<[Float], Never> {
+        rawPlaybackSamplesSubject.eraseToAnyPublisher()
     }
 
     init() {
@@ -122,6 +127,9 @@ actor AudioPlaybackEngine {
             logger.error("Failed to create audio buffer for frame \(frame.sequence)")
             return
         }
+
+        // Send amplified (signed, non-rectified) samples for speech recognition
+        rawPlaybackSamplesSubject.send(amplified)
 
         // Feed rectified (absolute value) samples into the waveform buffer
         let rectifiedSamples = amplified.map { abs($0) }

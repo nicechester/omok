@@ -35,6 +35,10 @@ struct GameView: View {
     @State private var playbackSamplesCancellable: AnyCancellable?
     @State private var receivingAudioCancellable: AnyCancellable?
     @State private var micWasEnabledBeforeBackground = false
+    @State private var opponentTranscriber = SpeechTranscriber()
+    @State private var transcripts: [TranscriptEntry] = []
+    @State private var opponentTranscriptSamplesCancellable: AnyCancellable?
+    @State private var opponentTranscriptUpdatesCancellable: AnyCancellable?
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil, timerDuration: Int? = nil) {
         self.gameId = gameId
@@ -90,7 +94,7 @@ struct GameView: View {
                     .sink { samples in
                         audioSamples = samples
                     }
-                
+
                 // rawSamplesPublisher is nonisolated, no await needed
                 rawSamplesCancellable = audioEngine.rawSamplesPublisher
                     .sink { rawSamples in
@@ -158,6 +162,25 @@ struct GameView: View {
                     .receive(on: DispatchQueue.main)
                     .sink { isReceiving in
                         isReceivingOpponentAudio = isReceiving
+                    }
+
+                // Subscribe to opponent audio for speech recognition
+                opponentTranscriptSamplesCancellable = audioPlaybackEngine.rawPlaybackSamplesPublisher
+                    .receive(on: DispatchQueue.main)
+                    .sink { samples in
+                        Task {
+                            await opponentTranscriber.append(samples: samples)
+                        }
+                    }
+
+                // Start opponent transcriber
+                Task { await opponentTranscriber.start() }
+
+                // Subscribe to opponent transcriber updates
+                opponentTranscriptUpdatesCancellable = await opponentTranscriber.updatesPublisher
+                    .receive(on: DispatchQueue.main)
+                    .sink { text, isFinal in
+                        applyTranscriptUpdate((text: text, isFinal: isFinal), speaker: viewModel.mySeat?.opposite)
                     }
 
                 // Start receiving incoming audio frames from Firebase
@@ -272,6 +295,12 @@ struct GameView: View {
             .padding()
 
             Spacer()
+
+            if !transcripts.isEmpty {
+                TranscriptBannerView(transcripts: transcripts, mySeat: viewModel.mySeat)
+                    .padding(.horizontal)
+            }
+
             actionsSection
         }
     }
@@ -388,6 +417,47 @@ struct GameView: View {
         }
     }
 
+    private func applyTranscriptUpdate(_ update: (text: String, isFinal: Bool), speaker: Stone?) {
+        print("[GameView] applyTranscriptUpdate: speaker=\(String(describing: speaker)), text='\(update.text)', isFinal=\(update.isFinal), currentCount=\(transcripts.count)")
+
+        if let existing = transcripts.firstIndex(where: { $0.speaker == speaker && !$0.isFinal }) {
+            print("[GameView] Found existing non-final entry for speaker, updating")
+            transcripts[existing].text = update.text
+            transcripts[existing].updatedAt = Date()
+            if update.isFinal {
+                transcripts[existing].isFinal = true
+                // Schedule 6s expiry
+                let entryId = transcripts[existing].id
+                Task {
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    transcripts.removeAll { $0.id == entryId }
+                }
+            }
+        } else if !update.text.isEmpty {
+            print("[GameView] Creating new transcript entry for speaker")
+            let entry = TranscriptEntry(
+                id: UUID(),
+                speaker: speaker,
+                text: update.text,
+                isFinal: update.isFinal,
+                startedAt: Date(),
+                updatedAt: Date()
+            )
+            transcripts.append(entry)
+            print("[GameView] Entry added, total count: \(transcripts.count)")
+            if update.isFinal {
+                Task {
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    transcripts.removeAll { $0.id == entry.id }
+                }
+            }
+        }
+        // Cap at ~5 entries
+        if transcripts.count > 5 {
+            transcripts.removeFirst(transcripts.count - 5)
+        }
+    }
+
     private func handleDisappear() {
         // Pause timer when leaving GameView (navigating to other tabs or screens)
         viewModel.pauseTimer()
@@ -399,12 +469,17 @@ struct GameView: View {
             }
             try? await audioPlaybackEngine.stop()
             await updateSpeakingState(false)
+
+            // Stop opponent transcriber
+            await opponentTranscriber.stop()
         }
         audioLevelCancellable?.cancel()
         audioSamplesCancellable?.cancel()
         rawSamplesCancellable?.cancel()
         playbackSamplesCancellable?.cancel()
         receivingAudioCancellable?.cancel()
+        opponentTranscriptSamplesCancellable?.cancel()
+        opponentTranscriptUpdatesCancellable?.cancel()
     }
 
     private func handleStatusChange(_ newStatus: GameStatus?) {
@@ -417,6 +492,9 @@ struct GameView: View {
             }
             Task {
                 await updateSpeakingState(false)
+
+                // Stop opponent transcriber when game finishes
+                await opponentTranscriber.stop()
             }
         }
     }
