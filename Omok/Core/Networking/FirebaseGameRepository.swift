@@ -71,7 +71,13 @@ final class FirebaseGameRepository: GameRepository {
             data["timerDuration"] = duration
             data["turnStartedAt"] = ServerValue.timestamp()
         }
-        try await gameRef(gameId).setValue(data)
+        do {
+            try await gameRef(gameId).setValue(data)
+            logger.info("Game created: \(gameId)")
+        } catch {
+            logger.error("Failed to create game \(gameId): \(error.localizedDescription)")
+            throw error
+        }
     }
 
     // MARK: - Claim seat

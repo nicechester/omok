@@ -26,7 +26,7 @@
       "games": {
         "$gameId": {
           ".read": "auth != null",
-          ".write": "auth != null && (newData.exists() || (data.child('createdBy').val() === auth.uid || data.child('players/black/uid').val() === auth.uid || data.child('players/white/uid').val() === auth.uid))",
+          ".write": "auth != null && (!data.exists() || data.child('createdBy').val() === auth.uid || data.child('players/black/uid').val() === auth.uid || data.child('players/white/uid').val() === auth.uid)",
           "status":    { ".validate": "newData.isString() && newData.val().matches(/^(waiting|playing|finished)$/)" },
           "turn":      { ".validate": "newData.val() === 'black' || newData.val() === 'white'" },
           "round":     { ".validate": "newData.isNumber() && newData.val() >= 0" },
@@ -58,8 +58,12 @@
               ".validate": "$color === 'black' || $color === 'white'",
               "uid": { ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val() || newData.val() === auth.uid)" },
               "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20 && (!data.exists() || data.val() === newData.val() || newData.parent().child('uid').val() === auth.uid)" },
-              "joinedAt": { ".validate": "newData.isNumber()" }
+              "joinedAt": { ".validate": "newData.isNumber()" },
+              "active": { ".validate": "newData.isBoolean()" }
             }
+          },
+          "scores": {
+            "$uid": { ".validate": "newData.isNumber() && newData.val() >= 0" }
           },
           "rematch": {
             "$uid": { ".validate": "$uid === auth.uid && newData.val() === true" }
