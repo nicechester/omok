@@ -218,7 +218,7 @@ final class FirebaseGameRepository: GameRepository {
             updates["previousLastMove"] = NSNull()
         }
 
-        // Check for win and increment score
+        // Check for win (takes precedence over 3x3 rule)
         if let line = GomokuRules.winningLine(board: boardCells, from: cell, color: turn) {
             updates["status"] = GameStatus.finished.rawValue
             updates["result"] = turn.rawValue
@@ -228,9 +228,18 @@ final class FirebaseGameRepository: GameRepository {
                 let currentScore = (dict["scores"] as? [String: Any])?[winnerUid] as? Int ?? 0
                 updates["scores/\(winnerUid)"] = currentScore + 1
             }
-        } else if GomokuRules.isBoardFull(moveCount: moveCount) {
-            updates["status"] = GameStatus.finished.rawValue
-            updates["result"] = GameResult.draw.rawValue
+        } else {
+            // Check 3x3 rule: cannot create two or more open threes
+            let openThreeCount = GomokuRules.countOpenThrees(board: boardCells, from: cell, color: turn)
+            if openThreeCount >= 2 {
+                throw GameError.openThreesForbidden
+            }
+
+            // Check for draw
+            if GomokuRules.isBoardFull(moveCount: moveCount) {
+                updates["status"] = GameStatus.finished.rawValue
+                updates["result"] = GameResult.draw.rawValue
+            }
         }
 
         try await ref.updateChildValues(updates)
