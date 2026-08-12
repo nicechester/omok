@@ -44,6 +44,7 @@ omok/games/{gameId}:
   players:
     black:     { uid: "<authUid>", joinedAt: 1730000000000, name: "Chester" }
     white:     { uid: "<authUid>", joinedAt: 1730000000000, name: "Chester" }
+  scores:      { "<uid>": 3, "<uid>": 1 }    # wins per player, persists across rematches
   rematch:     { "<uid>": true, "<uid>": true }  # cleared on reset
   createdBy:   "<authUid>"
   createdAt:   <ServerValue.timestamp()>
@@ -64,10 +65,11 @@ Cell keys are **`"{row}_{col}"`** (e.g. `"7_7"`), *not* a flat integer index.
 
 All game mutations go through RTDB transactions on the game node:
 
-- **Create**: Write node with `status: "waiting"`, `turn: "black"`, `round: 0`, `moveCount: 0`, creator in `players/black`
+- **Create**: Write node with `status: "waiting"`, `turn: "black"`, `round: 0`, `moveCount: 0`, empty `scores: {}`, creator in `players/black`
 - **Join/Claim seat**: Transaction that fills empty seat; if both filled, set `status: "playing"`. Reconnect returns your existing seat unchanged.
-- **Place stone**: Transaction that guards `status == "playing"`, `players[turn].uid == uid`, and cell empty; then writes cell, increments `moveCount`, updates `lastMove`, flips `turn`. Runs `GomokuRules.winningLine()` inside the transaction; on win, set `status: "finished"`, `result`, `winningLine`. On 225 stones with no win, set `status: "finished"`, `result: "draw"`.
-- **Rematch**: Each player writes `rematch/{uid}: true`. When both votes observed, a transaction resets: clears `board`, `result`, `winningLine`, `rematch`, increments `round`, sets `status: "playing"`, resets `turn` based on round parity for fairness. Seats stay fixed.
+- **Place stone**: Transaction that guards `status == "playing"`, `players[turn].uid == uid`, and cell empty; then writes cell, increments `moveCount`, updates `lastMove`, flips `turn`. Runs `GomokuRules.winningLine()` inside the transaction; on win, set `status: "finished"`, `result`, `winningLine`, and increment winner's `scores[uid]`. On 225 stones with no win, set `status: "finished"`, `result: "draw"`.
+- **Forfeit**: Sets game to finished, winner is opponent, and increments winner's `scores[uid]`.
+- **Rematch**: Each player writes `rematch/{uid}: true`. When both votes observed, a transaction resets: clears `board`, `result`, `winningLine`, `rematch`, increments `round`, sets `status: "playing"`, resets `turn` based on round parity for fairness. Seats stay fixed. **Scores persist across rematches.**
 
 **Transaction execution is retry-safe**: bodies run multiple times on conflict, may first run against `nil` cache. Never create the node inside a transaction — abort instead. Use `Int(Date().timeIntervalSince1970 * 1000)` for `updatedAt` inside transactions (never read `ServerValue.timestamp()` inside transaction logic). Every `.validate` in security rules includes `|| data.val() === newData.val()` escape hatch because whole-node puts re-validate unchanged children.
 

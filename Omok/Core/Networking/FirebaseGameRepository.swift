@@ -62,6 +62,7 @@ final class FirebaseGameRepository: GameRepository {
                 "black": blackSeat
             ],
             "speaking": [:],
+            "scores": [:],
             "createdBy": creatorUid,
             "createdAt": ServerValue.timestamp(),
             "updatedAt": ServerValue.timestamp()
@@ -211,11 +212,16 @@ final class FirebaseGameRepository: GameRepository {
             updates["previousLastMove"] = NSNull()
         }
 
-        // Check for win
+        // Check for win and increment score
         if let line = GomokuRules.winningLine(board: boardCells, from: cell, color: turn) {
             updates["status"] = GameStatus.finished.rawValue
             updates["result"] = turn.rawValue
             updates["winningLine"] = line.map { ["r": $0.r, "c": $0.c] }
+            // Increment winner's score
+            if let winnerUid = seatDict["uid"] as? String {
+                let currentScore = (dict["scores"] as? [String: Any])?[winnerUid] as? Int ?? 0
+                updates["scores/\(winnerUid)"] = currentScore + 1
+            }
         } else if GomokuRules.isBoardFull(moveCount: moveCount) {
             updates["status"] = GameStatus.finished.rawValue
             updates["result"] = GameResult.draw.rawValue
@@ -225,49 +231,58 @@ final class FirebaseGameRepository: GameRepository {
     }
     
     // MARK: - Forfeit
-    
+
     func forfeit(gameId: String, uid: String) async throws {
         let ref = gameRef(gameId)
-        
+
         // Fetch current state
         let snapshot = try await ref.getData()
         guard let dict = snapshot.value as? [String: Any] else {
             throw GameError.gameNotFound
         }
-        
+
         guard let statusRaw = dict["status"] as? String,
               statusRaw == GameStatus.playing.rawValue else {
             throw GameError.gameNotActive
         }
-        
+
         guard let players = dict["players"] as? [String: Any] else {
             throw GameError.gameNotFound
         }
-        
+
         // Find which seat the user has
         var userSeat: Stone?
+        var winnerUid: String?
         for color in [Stone.black, Stone.white] {
             if let seat = players[color.rawValue] as? [String: Any],
                seat["uid"] as? String == uid {
                 userSeat = color
-                break
+            } else if let seat = players[color.rawValue] as? [String: Any],
+                      let uid = seat["uid"] as? String {
+                winnerUid = uid
             }
         }
-        
+
         guard let forfeitingSeat = userSeat else {
             throw GameError.notYourTurn
         }
-        
+
         // Winner is the opponent
         let winner = forfeitingSeat.opposite
 
-        let updates: [String: Any] = [
+        var updates: [String: Any] = [
             "status": GameStatus.finished.rawValue,
             "result": winner.rawValue,
             "players/\(forfeitingSeat.rawValue)/active": false,
             "undoRequest": NSNull(),
             "updatedAt": ServerValue.timestamp()
         ]
+
+        // Increment winner's score
+        if let winnerUid {
+            let currentScore = (dict["scores"] as? [String: Any])?[winnerUid] as? Int ?? 0
+            updates["scores/\(winnerUid)"] = currentScore + 1
+        }
 
         try await ref.updateChildValues(updates)
     }
@@ -706,6 +721,15 @@ final class FirebaseGameRepository: GameRepository {
         let timerDuration = dict["timerDuration"] as? Int
         let turnStartedAt = dict["turnStartedAt"] as? Int
 
+        var scores: [String: Int] = [:]
+        if let scoresDict = dict["scores"] as? [String: Any] {
+            for (uid, score) in scoresDict {
+                if let scoreInt = score as? Int {
+                    scores[uid] = scoreInt
+                }
+            }
+        }
+
         return GameState(
             status: status,
             turn: turn,
@@ -722,7 +746,8 @@ final class FirebaseGameRepository: GameRepository {
             createdBy: createdBy,
             speaking: speaking,
             timerDuration: timerDuration,
-            turnStartedAt: turnStartedAt
+            turnStartedAt: turnStartedAt,
+            scores: scores
         )
     }
 }

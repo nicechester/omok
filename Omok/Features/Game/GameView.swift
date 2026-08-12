@@ -277,6 +277,7 @@ struct GameView: View {
                 myName: playerName,
                 players: viewModel.game?.players ?? [:],
                 remainingSeconds: viewModel.remainingSeconds,
+                scores: viewModel.game?.scores ?? [:],
                 onLeave: {
                     viewModel.markPlayerAsDisconnected()
                     onLeave?()
