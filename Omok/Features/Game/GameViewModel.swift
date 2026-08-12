@@ -295,21 +295,28 @@ final class GameViewModel {
         } catch GameError.gameNotFound {
             // Game doesn't exist yet, create it (creator gets black seat)
             do {
+                print("[GameViewModel] Creating new game: \(gameId)")
                 try await repository.createGame(gameId: gameId, creatorUid: uid, creatorName: playerName, timerDuration: timerDuration)
+                print("[GameViewModel] Game created successfully, claiming black seat")
                 mySeat = .black
             } catch {
-                errorMessage = error.localizedDescription
+                let errorMsg = "Failed to create game: \(error.localizedDescription)"
+                print("[GameViewModel] \(errorMsg)")
+                errorMessage = errorMsg
                 return
             }
         } catch GameError.gameFull {
             mySeat = nil
         } catch {
-            errorMessage = error.localizedDescription
+            let errorMsg = "Game error: \(error.localizedDescription)"
+            print("[GameViewModel] \(errorMsg)")
+            errorMessage = errorMsg
         }
 
         listenTask?.cancel()
         listenTask = Task { @MainActor [weak self, gameId, repository] in
             guard let self else { return }
+            print("[GameViewModel] Starting to listen to game: \(gameId)")
             for await state in repository.listenToGame(gameId: gameId) {
                 if Task.isCancelled { break }
                 await self.handle(state)
