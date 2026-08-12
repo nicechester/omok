@@ -29,6 +29,7 @@ enum GameError: LocalizedError {
     case noUndoPending
     case turnAlreadyAdvanced
     case deleteNotAllowed
+    case openThreesForbidden
 
     var errorDescription: String? {
         switch self {
@@ -52,6 +53,8 @@ enum GameError: LocalizedError {
             return "Turn already advanced."
         case .deleteNotAllowed:
             return "Can't delete a room while a game is in progress."
+        case .openThreesForbidden:
+            return "Cannot create two open threes in one move (3x3 rule)."
         }
     }
 }

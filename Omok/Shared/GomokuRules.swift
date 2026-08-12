@@ -14,6 +14,43 @@ enum GomokuRules {
         moveCount >= size * size
     }
 
+    /// Count open threes created by placing a stone at `cell`.
+    /// An open three is exactly 3 consecutive stones with empty space on both ends.
+    /// Returns the number of open threes created (0, 1, or 2).
+    /// Winning move (5+) overrides this rule and should be checked first.
+    static func countOpenThrees(board: [Cell: Stone], from cell: Cell, color: Stone) -> Int {
+        let directions: [(dr: Int, dc: Int)] = [(0, 1), (1, 0), (1, 1), (1, -1)]
+        var openThreeCount = 0
+
+        for direction in directions {
+            var forward = Cell(r: cell.r + direction.dr, c: cell.c + direction.dc)
+            var forwardCount = 0
+            while isValid(cell: forward), board[forward] == color {
+                forwardCount += 1
+                forward = Cell(r: forward.r + direction.dr, c: forward.c + direction.dc)
+            }
+            let forwardEmpty = isValid(cell: forward) && board[forward] == nil
+
+            var backward = Cell(r: cell.r - direction.dr, c: cell.c - direction.dc)
+            var backwardCount = 0
+            while isValid(cell: backward), board[backward] == color {
+                backwardCount += 1
+                backward = Cell(r: backward.r - direction.dr, c: backward.c - direction.dc)
+            }
+            let backwardEmpty = isValid(cell: backward) && board[backward] == nil
+
+            // Total consecutive stones including the placed stone
+            let totalConsecutive = forwardCount + 1 + backwardCount
+
+            // Open three: exactly 3 consecutive stones with empty on both sides
+            if totalConsecutive == 3 && forwardEmpty && backwardEmpty {
+                openThreeCount += 1
+            }
+        }
+
+        return openThreeCount
+    }
+
     /// Convention: `cell` must already be present in `board` as `color` (the
     /// caller writes the just-placed stone into `board` *before* calling this).
     ///
