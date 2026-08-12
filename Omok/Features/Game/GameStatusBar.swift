@@ -160,8 +160,8 @@ struct GameStatusBar: View {
 }
 
 #Preview {
-    let blackSeat = PlayerSeat(uid: "user1", joinedAt: 0, name: "Chester", active: true)
-    let whiteSeat = PlayerSeat(uid: "user2", joinedAt: 0, name: "Mina", active: true)
+    let blackSeat = PlayerSeat(uid: "user1", color: .black, joinedAt: 0, name: "Chester", active: true)
+    let whiteSeat = PlayerSeat(uid: "user2", color: .white, joinedAt: 0, name: "Mina", active: true)
     let emptyPlayersDict = [Stone: PlayerSeat]()
     let fullPlayersDict: [Stone: PlayerSeat] = [.black: blackSeat, .white: whiteSeat]
 

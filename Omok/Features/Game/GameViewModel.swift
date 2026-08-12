@@ -335,6 +335,9 @@ final class GameViewModel {
         guard let state else { return }
         game = state
 
+        // Update mySeat from game state (handles color swap on rematch)
+        mySeat = state.seat(of: uid)
+
         // Play sound when opponent joins
         if let mySeat,
            previousGame?.players[mySeat.opposite] == nil,
@@ -361,13 +364,12 @@ final class GameViewModel {
         updateTimerState(for: state, force: false)
 
         guard state.status == .finished, bothVotedRematch else { return }
-        // Both clients may observe the second vote and both race to reset;
-        // resetForRematch is idempotent (guards on status == finished), so
-        // the double-fire is harmless.
+        // Only creator drives the reset to avoid race condition between clients
+        guard state.createdBy == uid else { return }
         do {
             try await repository.resetForRematch(gameId: gameId)
         } catch {
-            // Ignore: the other client's transaction likely already won.
+            // Ignore if already reset
         }
     }
 

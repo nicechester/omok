@@ -39,6 +39,7 @@ struct GameView: View {
     @State private var transcripts: [TranscriptEntry] = []
     @State private var opponentTranscriptSamplesCancellable: AnyCancellable?
     @State private var opponentTranscriptUpdatesCancellable: AnyCancellable?
+    @State private var voiceChatStarted = false
 
     init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil, timerDuration: Int? = nil) {
         self.gameId = gameId
@@ -460,6 +461,7 @@ struct GameView: View {
     }
 
     private func handleDisappear() {
+        voiceChatStarted = false
         viewModel.markPlayerAsDisconnected()
 
         // Pause timer when leaving GameView (navigating to other tabs or screens)
@@ -486,9 +488,11 @@ struct GameView: View {
     }
 
     private func handleStatusChange(_ newStatus: GameStatus?) {
-        if newStatus == .playing && viewModel.game?.players.count == 2 {
+        if newStatus == .playing && viewModel.game?.players.count == 2 && !voiceChatStarted {
+            voiceChatStarted = true
             startVoiceChat()
         } else if newStatus == .finished {
+            voiceChatStarted = false
             if isMicEnabled {
                 stopAudioCapture()
                 isMicEnabled = false
