@@ -11,6 +11,7 @@ struct PlayView: View {
     var body: some View {
         if let gameId = activeGameId {
             GameView(gameId: gameId, uid: uid, playerName: playerName, onLeave: { activeGameId = nil })
+                .id(gameId)
         } else {
             ContentUnavailableView {
                 Label("No Active Game", systemImage: "circle.grid.3x3")
