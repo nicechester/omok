@@ -279,7 +279,6 @@ final class FirebaseGameRepository: GameRepository {
         var updates: [String: Any] = [
             "status": GameStatus.finished.rawValue,
             "result": winner.rawValue,
-            "players/\(forfeitingSeat.rawValue)/active": false,
             "undoRequest": NSNull(),
             "updatedAt": ServerValue.timestamp()
         ]
