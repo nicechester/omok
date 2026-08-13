@@ -15,7 +15,8 @@ enum GomokuRules {
     }
 
     /// Count open threes created by placing a stone at `cell`.
-    /// An open three is exactly 3 consecutive stones with empty space on both ends.
+    /// An open three is exactly 3 consecutive stones with empty space on both ends,
+    /// AND no additional same-color stones beyond a single gap (which would make it a four).
     /// Returns the number of open threes created (0, 1, or 2).
     /// Winning move (5+) overrides this rule and should be checked first.
     static func countOpenThrees(board: [Cell: Stone], from cell: Cell, color: Stone) -> Int {
@@ -30,6 +31,15 @@ enum GomokuRules {
                 forward = Cell(r: forward.r + direction.dr, c: forward.c + direction.dc)
             }
             let forwardEmpty = isValid(cell: forward) && board[forward] == nil
+            
+            // Check for stone beyond the gap (e.g., OOO_O pattern)
+            var forwardGapStone = false
+            if forwardEmpty {
+                let beyondGap = Cell(r: forward.r + direction.dr, c: forward.c + direction.dc)
+                if isValid(cell: beyondGap), board[beyondGap] == color {
+                    forwardGapStone = true
+                }
+            }
 
             var backward = Cell(r: cell.r - direction.dr, c: cell.c - direction.dc)
             var backwardCount = 0
@@ -38,12 +48,22 @@ enum GomokuRules {
                 backward = Cell(r: backward.r - direction.dr, c: backward.c - direction.dc)
             }
             let backwardEmpty = isValid(cell: backward) && board[backward] == nil
+            
+            // Check for stone beyond the gap
+            var backwardGapStone = false
+            if backwardEmpty {
+                let beyondGap = Cell(r: backward.r - direction.dr, c: backward.c - direction.dc)
+                if isValid(cell: beyondGap), board[beyondGap] == color {
+                    backwardGapStone = true
+                }
+            }
 
             // Total consecutive stones including the placed stone
             let totalConsecutive = forwardCount + 1 + backwardCount
 
-            // Open three: exactly 3 consecutive stones with empty on both sides
-            if totalConsecutive == 3 && forwardEmpty && backwardEmpty {
+            // Open three: exactly 3 consecutive stones with empty on both sides,
+            // but NOT if there's a same-color stone beyond the gap (making it 4+)
+            if totalConsecutive == 3 && forwardEmpty && backwardEmpty && !forwardGapStone && !backwardGapStone {
                 openThreeCount += 1
             }
         }
