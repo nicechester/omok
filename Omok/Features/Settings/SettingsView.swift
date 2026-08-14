@@ -64,6 +64,21 @@ struct SettingsView: View {
                 Section {
                     NicknameView(isFirstRun: false)
                 }
+
+                Section {
+                    VStack(alignment: .center, spacing: 8) {
+                        Text("Omok")
+                            .font(.headline)
+                        Text("Version \(appVersion)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("© 2026 Chester Kim")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                }
             }
             .onAppear {
                 Task {
@@ -71,6 +86,12 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+        return "\(version) (\(build))"
     }
 
     private func updateAuthorizationStatus() async {
