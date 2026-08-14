@@ -76,11 +76,12 @@ enum GomokuRules {
     ///
     /// Checks the 4 axes through `cell` (horizontal, vertical, and both
     /// diagonals), walking outward in both directions on each axis and
-    /// counting contiguous same-color stones. Free-style rules: any run of 5
-    /// or more wins (overlines of 6+ are not excluded). Returns the full
-    /// contiguous run's cells for the first axis that reaches >= 5, or nil if
-    /// no axis does. Only the placed cell is examined, so this is O(1) per
-    /// move rather than a full-board scan.
+    /// counting contiguous same-color stones. Enforces overline rule: only
+    /// exactly 5 consecutive stones wins; 6+ stones in a line (overline) does
+    /// not count as a win. Returns the 5-stone winning line's cells for the
+    /// first axis that reaches exactly 5 (with no stones beyond on either end),
+    /// or nil if no axis does. Only the placed cell is examined, so this is
+    /// O(1) per move rather than a full-board scan.
     static func winningLine(board: [Cell: Stone], from cell: Cell, color: Stone) -> [Cell]? {
         let directions: [(dr: Int, dc: Int)] = [(0, 1), (1, 0), (1, 1), (1, -1)]
 
@@ -99,7 +100,8 @@ enum GomokuRules {
                 backward = Cell(r: backward.r - direction.dr, c: backward.c - direction.dc)
             }
 
-            if line.count >= 5 {
+            // Overline rule: exactly 5 wins, 6+ does not
+            if line.count == 5 {
                 return line
             }
         }
