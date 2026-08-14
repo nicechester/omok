@@ -62,25 +62,25 @@ struct NewGameSheet: View {
                                     .description
                             }
                     }
+                }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Turn Timer")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Turn Timer")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    if !isAIGame && isExistingGame {
+                        Text(existingTimerDuration.map { "\($0)s (set by room creator)" } ?? "Off (set by room creator)")
                             .font(.subheadline)
-                            .foregroundColor(.gray)
-                        if isExistingGame {
-                            Text(existingTimerDuration.map { "\($0)s (set by room creator)" } ?? "Off (set by room creator)")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        } else {
-                            Picker("Turn Timer", selection: $timerDurationPreference) {
-                                Text("Off").tag(0)
-                                Text("10s").tag(10)
-                                Text("20s").tag(20)
-                                Text("30s").tag(30)
-                                Text("60s").tag(60)
-                            }
-                            .pickerStyle(.segmented)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Picker("Turn Timer", selection: $timerDurationPreference) {
+                            Text("Off").tag(0)
+                            Text("10s").tag(10)
+                            Text("20s").tag(20)
+                            Text("30s").tag(30)
+                            Text("60s").tag(60)
                         }
+                        .pickerStyle(.segmented)
                     }
                 }
 
