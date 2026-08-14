@@ -35,10 +35,16 @@ struct RootTabView: View {
                 .tag(2)
 
             NavigationStack {
+                HelpView()
+            }
+            .tabItem { Label("Help", systemImage: "questionmark.circle") }
+            .tag(3)
+
+            NavigationStack {
                 SettingsView()
             }
             .tabItem { Label("Settings", systemImage: "gearshape") }
-            .tag(3)
+            .tag(4)
         }
         .onChange(of: pendingGameCode) { _, newCode in
             if let code = newCode {
