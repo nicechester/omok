@@ -28,27 +28,12 @@ struct RoomsView: View {
                 ContentUnavailableView("No Recent Rooms", systemImage: "list.bullet", description: Text("Rooms you play will appear here"))
             } else {
                 List(rooms) { room in
-                    Button {
-                        onJoinRoom(room.code, room.aiDifficulty, nil)
-                    } label: {
-                        HStack {
-                            Text(room.code)
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .monospaced()
-                            Spacer()
-                            Text(room.lastPlayedAt, style: .relative)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            deleteRoom(room)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
+                    RoomCell(
+                        room: room,
+                        onJoinRoom: { onJoinRoom(room.code, room.aiDifficulty, nil) },
+                        onDelete: { deleteRoom(room) },
+                        repository: repository
+                    )
                 }
             }
         }
@@ -157,6 +142,94 @@ struct RoomsView: View {
 
         if needsUpdate {
             recentRoomsData = RecentRooms.encode(rooms)
+        }
+    }
+}
+
+struct RoomCell: View {
+    let room: RecentRoom
+    let onJoinRoom: () -> Void
+    let onDelete: () -> Void
+    let repository: GameRepository
+
+    @State private var game: GameState?
+    @State private var isLoading = true
+
+    var playerNames: String {
+        guard let game else { return "" }
+        let blackName = game.players[.black]?.displayName ?? (game.players[.black]?.uid.prefix(6).description ?? "—")
+        let whiteName = game.players[.white]?.displayName ?? (game.players[.white]?.uid.prefix(6).description ?? "—")
+        return "\(blackName) vs \(whiteName)"
+    }
+
+    var playerCount: String {
+        guard let game else { return "" }
+        let filled = (game.players[.black] != nil ? 1 : 0) + (game.players[.white] != nil ? 1 : 0)
+        return "\(filled)/2"
+    }
+
+    var turnIndicator: String {
+        guard let game, game.status == .playing else { return "" }
+        let turnSymbol = game.turn == .black ? "●" : "○"
+        let player = game.players[game.turn]?.displayName ?? game.turn.rawValue
+        return "\(turnSymbol) \(player)"
+    }
+
+    var body: some View {
+        Button {
+            onJoinRoom()
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(room.code)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .monospaced()
+                    Spacer()
+                    Text(room.lastPlayedAt, style: .relative)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if !isLoading {
+                    HStack(spacing: 8) {
+                        if !playerNames.isEmpty {
+                            Text(playerNames)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("Loading...")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if !turnIndicator.isEmpty {
+                            Text(turnIndicator)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                        } else if !playerNames.isEmpty {
+                            Text(playerCount)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .task {
+            do {
+                game = try await repository.fetchGame(gameId: room.code)
+            } catch {
+                game = nil
+            }
+            isLoading = false
         }
     }
 }
