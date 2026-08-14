@@ -5,6 +5,7 @@ struct RootTabView: View {
     @Binding var pendingGameCode: String?
     @State private var selectedTab = 1
     @State private var activeGameId: String?
+    @State private var aiDifficulty: AIDifficulty?
 
     init(uid: String, pendingGameCode: Binding<String?>) {
         self.uid = uid
@@ -18,7 +19,8 @@ struct RootTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                RoomsView(uid: uid, onJoinRoom: { code in
+                RoomsView(uid: uid, onJoinRoom: { code, difficulty in
+                    aiDifficulty = difficulty
                     activeGameId = code
                     selectedTab = 2
                 })
@@ -26,7 +28,7 @@ struct RootTabView: View {
             .tabItem { Label("Rooms", systemImage: "list.bullet") }
             .tag(1)
 
-            PlayView(uid: uid, activeGameId: $activeGameId, pendingGameCode: $pendingGameCode)
+            PlayView(uid: uid, activeGameId: $activeGameId, aiDifficulty: $aiDifficulty, pendingGameCode: $pendingGameCode)
                 .tabItem { Label("Play", image: "omok-bh") }
                 .tag(2)
 

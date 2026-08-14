@@ -4,6 +4,7 @@ struct RecentRoom: Identifiable, Codable {
     var id: String { code }
     let code: String
     let lastPlayedAt: Date
+    let aiDifficulty: AIDifficulty?
 }
 
 enum RecentRooms {
@@ -18,9 +19,9 @@ enum RecentRooms {
         (try? JSONEncoder().encode(rooms)) ?? Data()
     }
 
-    static func recordPlay(code: String, in data: Data) -> Data {
+    static func recordPlay(code: String, aiDifficulty: AIDifficulty? = nil, in data: Data) -> Data {
         var rooms = decode(from: data).filter { $0.code != code }
-        rooms.insert(RecentRoom(code: code, lastPlayedAt: Date()), at: 0)
+        rooms.insert(RecentRoom(code: code, lastPlayedAt: Date(), aiDifficulty: aiDifficulty), at: 0)
         if rooms.count > maxCount { rooms = Array(rooms.prefix(maxCount)) }
         return encode(rooms)
     }

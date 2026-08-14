@@ -3,6 +3,7 @@ import SwiftUI
 struct PlayView: View {
     let uid: String
     @Binding var activeGameId: String?
+    @Binding var aiDifficulty: AIDifficulty?
     @Binding var pendingGameCode: String?
 
     @AppStorage(PlayerName.storageKey) private var playerName = ""
@@ -10,7 +11,7 @@ struct PlayView: View {
 
     var body: some View {
         if let gameId = activeGameId {
-            GameView(gameId: gameId, uid: uid, playerName: playerName, onLeave: { activeGameId = nil })
+            GameView(gameId: gameId, uid: uid, playerName: playerName, aiDifficulty: aiDifficulty, onLeave: { activeGameId = nil })
                 .id(gameId)
         } else {
             ContentUnavailableView {
@@ -22,7 +23,8 @@ struct PlayView: View {
                     .buttonStyle(.borderedProminent)
             }
             .sheet(isPresented: $showNewGame) {
-                NewGameSheet(uid: uid, onJoin: { code in
+                NewGameSheet(uid: uid, onJoin: { code, difficulty in
+                    aiDifficulty = difficulty
                     activeGameId = code
                     showNewGame = false
                 })
@@ -38,5 +40,5 @@ struct PlayView: View {
 }
 
 #Preview {
-    PlayView(uid: "user1", activeGameId: .constant(nil), pendingGameCode: .constant(nil))
+    PlayView(uid: "user1", activeGameId: .constant(nil), aiDifficulty: .constant(nil), pendingGameCode: .constant(nil))
 }

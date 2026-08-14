@@ -10,6 +10,7 @@ struct GameView: View {
     let playerName: String
     var onLeave: (() -> Void)? = nil
     let timerDuration: Int?
+    let aiDifficulty: AIDifficulty?
 
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
@@ -41,18 +42,28 @@ struct GameView: View {
     @State private var opponentTranscriptUpdatesCancellable: AnyCancellable?
     @State private var voiceChatStarted = false
 
-    init(gameId: String, uid: String, playerName: String, onLeave: (() -> Void)? = nil, timerDuration: Int? = nil) {
+    init(gameId: String, uid: String, playerName: String, aiDifficulty: AIDifficulty? = nil, onLeave: (() -> Void)? = nil, timerDuration: Int? = nil) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
         self.onLeave = onLeave
         self.timerDuration = timerDuration
+        self.aiDifficulty = aiDifficulty
+
+        let repository: GameRepository
+        if let difficulty = aiDifficulty {
+            repository = LocalGameRepository(difficulty: difficulty, localUid: uid)
+        } else {
+            repository = FirebaseGameRepository()
+        }
+
         _viewModel = State(initialValue: GameViewModel(
             gameId: gameId,
             uid: uid,
             playerName: playerName,
             timerDuration: timerDuration,
-            repository: FirebaseGameRepository()
+            aiDifficulty: aiDifficulty,
+            repository: repository
         ))
         _audioMessenger = State(initialValue: AudioMessenger(gameId: gameId, uid: uid))
     }
@@ -221,29 +232,31 @@ struct GameView: View {
 
                     Spacer()
 
-                    // Undo button
-                    if viewModel.canRequestUndo {
-                        Button(action: {
-                            Task {
-                                await viewModel.requestUndo()
+                    // Undo button (disabled for AI games)
+                    if !viewModel.isAIGame {
+                        if viewModel.canRequestUndo {
+                            Button(action: {
+                                Task {
+                                    await viewModel.requestUndo()
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.uturn.left")
+                                        .font(.system(size: 14))
+                                    Text("Undo")
+                                        .font(.subheadline)
+                                }
+                                .foregroundColor(.blue)
                             }
-                        }) {
+                        } else if viewModel.undoRequestPending {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.uturn.left")
                                     .font(.system(size: 14))
-                                Text("Undo")
+                                Text("Undo…")
                                     .font(.subheadline)
                             }
-                            .foregroundColor(.blue)
+                            .foregroundColor(.gray)
                         }
-                    } else if viewModel.undoRequestPending {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.uturn.left")
-                                .font(.system(size: 14))
-                            Text("Undo…")
-                                .font(.subheadline)
-                        }
-                        .foregroundColor(.gray)
                     }
 
                     Spacer()
@@ -375,8 +388,9 @@ struct GameView: View {
             Text(viewModel.errorMessage ?? "An error occurred.")
         }
         .task {
+            viewModel.isViewVisible = true
             await audioMessenger.startObservingSessions()
-            recentRoomsData = RecentRooms.recordPlay(code: gameId, in: recentRoomsData)
+            recentRoomsData = RecentRooms.recordPlay(code: gameId, aiDifficulty: aiDifficulty, in: recentRoomsData)
             await viewModel.start()
             viewModel.markPlayerAsActive()
         }
@@ -401,6 +415,7 @@ struct GameView: View {
             }
         }
         .onDisappear {
+            viewModel.isViewVisible = false
             handleDisappear()
         }
         .onChange(of: viewModel.game?.status) { _, newStatus in
@@ -488,7 +503,7 @@ struct GameView: View {
     }
 
     private func handleStatusChange(_ newStatus: GameStatus?) {
-        if newStatus == .playing && viewModel.game?.players.count == 2 && !voiceChatStarted {
+        if newStatus == .playing && viewModel.game?.players.count == 2 && !voiceChatStarted && !viewModel.isAIGame {
             voiceChatStarted = true
             startVoiceChat()
         } else if newStatus == .finished {
@@ -508,5 +523,5 @@ struct GameView: View {
 }
 
 #Preview {
-    GameView(gameId: "abc12", uid: "user1", playerName: "Chester")
+    GameView(gameId: "abc12", uid: "user1", playerName: "Chester", aiDifficulty: nil)
 }

@@ -13,15 +13,29 @@ final class GameViewModel {
     var mySeat: Stone?
     var errorMessage: String?
     var remainingSeconds: Int?
+    var isAIThinking: Bool = false
+    var isViewVisible: Bool = false
     private var hadOpponent = false
     private var currentScenePhase: ScenePhase = .active
     let timerDuration: Int?
+    let aiDifficulty: AIDifficulty?
 
     private let uid: String
     private let playerName: String
     private let repository: GameRepository
     private var backgroundedAt: Date?
     private var lastNotificationTime: Date?
+    // A plain box for AI move task
+    private final class AIMoveTaskBox {
+        var task: Task<Void, Never>?
+        deinit { task?.cancel() }
+    }
+    private let aiMoveTaskBox = AIMoveTaskBox()
+    private var aiMoveTask: Task<Void, Never>? {
+        get { aiMoveTaskBox.task }
+        set { aiMoveTaskBox.task = newValue }
+    }
+
     // A plain (non-actor-isolated) box so `deinit` — which runs nonisolated —
     // can cancel the listening task without touching a MainActor-isolated
     // stored property directly.
@@ -69,11 +83,12 @@ final class GameViewModel {
 
     private var timerAnchor: (turn: Stone, turnStartedAt: Int)?
 
-    init(gameId: String, uid: String, playerName: String, timerDuration: Int? = nil, repository: GameRepository = FirebaseGameRepository()) {
+    init(gameId: String, uid: String, playerName: String, timerDuration: Int? = nil, aiDifficulty: AIDifficulty? = nil, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
         self.uid = uid
         self.playerName = playerName
         self.timerDuration = timerDuration
+        self.aiDifficulty = aiDifficulty
         self.repository = repository
     }
 
@@ -154,7 +169,7 @@ final class GameViewModel {
 
     private func notifyIfNeeded(_ state: GameState?, previous: GameState?) {
         guard !isSpectator, let state else { return }
-        guard currentScenePhase == .background else { return }
+        guard !(isViewVisible && currentScenePhase == .active) else { return }
 
         let now = Date()
         if let lastNotificationTime, now.timeIntervalSince(lastNotificationTime) < 5 {
@@ -212,13 +227,17 @@ final class GameViewModel {
 
     // MARK: - Derived state
 
+    var isAIGame: Bool {
+        aiDifficulty != nil
+    }
+
     var isSpectator: Bool {
         mySeat == nil
     }
 
     var canPlay: Bool {
         guard let game, let mySeat, game.status == .playing else { return false }
-        return game.turn == mySeat && game.undoRequest == nil
+        return game.turn == mySeat && game.undoRequest == nil && !isAIThinking
     }
 
     var isMyWin: Bool {
@@ -246,8 +265,9 @@ final class GameViewModel {
             return "Waiting for opponent"
         case .playing:
             if isSpectator { return "Spectating" }
+            if isAIThinking { return "AI thinking…" }
             if canPlay { return "Your turn" }
-            return opponentName.map { "\($0)'s turn" } ?? "Opponent's turn"
+            return isAIGame ? "AI's turn" : (opponentName.map { "\($0)'s turn" } ?? "Opponent's turn")
         case .finished:
             return resultText(for: game)
         }
@@ -363,6 +383,15 @@ final class GameViewModel {
         // Update timer state
         updateTimerState(for: state, force: false)
 
+        // If AI game and it's AI's turn at game start (e.g. after rematch color swap), trigger AI move
+        if isAIGame, state.status == .playing, previousGame?.status != .playing,
+           let mySeat, state.turn != mySeat {
+            aiMoveTask = Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.performAIMove()
+            }
+        }
+
         guard state.status == .finished, bothVotedRematch else { return }
         // Only creator drives the reset to avoid race condition between clients
         guard state.createdBy == uid else { return }
@@ -379,14 +408,23 @@ final class GameViewModel {
         guard canPlay else { return }
         do {
             try await repository.placeStone(gameId: gameId, at: cell, uid: uid)
+            // For AI games, start AI move in background after human move
+            if isAIGame {
+                aiMoveTask = Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    await self.performAIMove()
+                }
+            }
         } catch let error as GameError {
             errorMessage = error.errorDescription
         } catch {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     func forfeit() async {
+        aiMoveTask?.cancel()
+        aiMoveTask = nil
         do {
             try await repository.forfeit(gameId: gameId, uid: uid)
         } catch let error as GameError {
@@ -406,6 +444,24 @@ final class GameViewModel {
         }
     }
 
+    private func performAIMove() async {
+        guard let game, game.status == .playing else { return }
+        guard let mySeat, game.turn != mySeat else { return }
+
+        isAIThinking = true
+        defer { isAIThinking = false }
+
+        if let localRepo = repository as? LocalGameRepository {
+            do {
+                try await localRepo.performAIMove(gameId: gameId)
+            } catch let error as GameError {
+                errorMessage = error.errorDescription
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     func updateSpeaking(_ isSpeaking: Bool) async {
         do {
             try await repository.updateSpeaking(gameId: gameId, uid: uid, isSpeaking: isSpeaking)
@@ -415,6 +471,10 @@ final class GameViewModel {
     }
 
     func requestUndo() async {
+        if isAIGame {
+            errorMessage = "Undo is not available in AI games"
+            return
+        }
         do {
             try await repository.requestUndo(gameId: gameId, uid: uid)
         } catch let error as GameError {
@@ -425,6 +485,10 @@ final class GameViewModel {
     }
 
     func approveUndo() async {
+        if isAIGame {
+            errorMessage = "Undo is not available in AI games"
+            return
+        }
         do {
             try await repository.approveUndo(gameId: gameId, uid: uid)
         } catch let error as GameError {
@@ -435,6 +499,9 @@ final class GameViewModel {
     }
 
     func rejectUndo() async {
+        if isAIGame {
+            return
+        }
         do {
             try await repository.rejectUndo(gameId: gameId, uid: uid)
         } catch let error as GameError {
