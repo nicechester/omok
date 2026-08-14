@@ -5,13 +5,14 @@ struct PlayView: View {
     @Binding var activeGameId: String?
     @Binding var aiDifficulty: AIDifficulty?
     @Binding var pendingGameCode: String?
+    @Binding var timerDuration: Int?
 
     @AppStorage(PlayerName.storageKey) private var playerName = ""
     @State private var showNewGame = false
 
     var body: some View {
         if let gameId = activeGameId {
-            GameView(gameId: gameId, uid: uid, playerName: playerName, aiDifficulty: aiDifficulty, onLeave: { activeGameId = nil })
+            GameView(gameId: gameId, uid: uid, playerName: playerName, aiDifficulty: aiDifficulty, onLeave: { activeGameId = nil }, timerDuration: timerDuration)
                 .id(gameId)
         } else {
             ContentUnavailableView {
@@ -23,8 +24,9 @@ struct PlayView: View {
                     .buttonStyle(.borderedProminent)
             }
             .sheet(isPresented: $showNewGame) {
-                NewGameSheet(uid: uid, onJoin: { code, difficulty in
+                NewGameSheet(uid: uid, onJoin: { code, difficulty, timer in
                     aiDifficulty = difficulty
+                    timerDuration = timer
                     activeGameId = code
                     showNewGame = false
                 })
@@ -40,5 +42,5 @@ struct PlayView: View {
 }
 
 #Preview {
-    PlayView(uid: "user1", activeGameId: .constant(nil), aiDifficulty: .constant(nil), pendingGameCode: .constant(nil))
+    PlayView(uid: "user1", activeGameId: .constant(nil), aiDifficulty: .constant(nil), pendingGameCode: .constant(nil), timerDuration: .constant(nil))
 }

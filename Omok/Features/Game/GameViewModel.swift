@@ -568,8 +568,6 @@ final class GameViewModel {
     private func startTicking(turn: Stone, turnStartedAt: Int, duration: Int) {
         timerTask = Task { @MainActor [weak self, gameId, repository] in
             guard let self else { return }
-            // Only tick if it's THIS player's turn (not watching opponent's turn)
-            guard turn == self.mySeat else { return }
 
             while !Task.isCancelled {
                 // Stop ticking if app backgrounded or view disappeared
