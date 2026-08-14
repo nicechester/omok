@@ -336,7 +336,7 @@ struct GameView: View {
                         }
                     }
                 )
-                Spacer()
+                .padding(.bottom, 90)
             }
         }
     }
@@ -347,33 +347,33 @@ struct GameView: View {
             resultOverlay
         }
         .navigationBarBackButtonHidden()
-        .alert("Leave Game?", isPresented: $showExitConfirmation) {
-            Button("Cancel", role: .cancel) { }
+        .confirmationDialog("Leave Game?", isPresented: $showExitConfirmation) {
             Button("Leave", role: .destructive) {
                 onLeave?()
             }
+            Button("Cancel", role: .cancel) { }
         } message: {
             Text("You'll stay in the game and can rejoin by entering the room code again.")
         }
-        .alert("Resign Game?", isPresented: $showForfeitConfirmation) {
-            Button("Cancel", role: .cancel) { }
+        .confirmationDialog("Resign Game?", isPresented: $showForfeitConfirmation) {
             Button("Resign", role: .destructive) {
                 Task {
                     await viewModel.forfeit()
                 }
             }
+            Button("Cancel", role: .cancel) { }
         } message: {
             Text("Are you sure you want to resign? Your opponent will win the game.")
         }
-        .alert("Undo Request", isPresented: $showUndoPrompt) {
-            Button("Cancel", role: .cancel) {
-                Task {
-                    await viewModel.rejectUndo()
-                }
-            }
+        .confirmationDialog("Undo Request", isPresented: $showUndoPrompt) {
             Button("Approve") {
                 Task {
                     await viewModel.approveUndo()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                Task {
+                    await viewModel.rejectUndo()
                 }
             }
         } message: {
