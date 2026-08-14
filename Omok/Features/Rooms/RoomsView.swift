@@ -3,7 +3,7 @@ import FirebaseDatabase
 
 struct RoomsView: View {
     let uid: String
-    let onJoinRoom: (String, AIDifficulty?) -> Void
+    let onJoinRoom: (String, AIDifficulty?, Int?) -> Void
 
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
     @Environment(\.scenePhase) private var scenePhase
@@ -29,7 +29,7 @@ struct RoomsView: View {
             } else {
                 List(rooms) { room in
                     Button {
-                        onJoinRoom(room.code, room.aiDifficulty)
+                        onJoinRoom(room.code, room.aiDifficulty, nil)
                     } label: {
                         HStack {
                             Text(room.code)
@@ -79,9 +79,9 @@ struct RoomsView: View {
             }
         }
         .sheet(isPresented: $showNewGame) {
-            NewGameSheet(uid: uid, onJoin: { code, difficulty in
+            NewGameSheet(uid: uid, onJoin: { code, difficulty, timer in
                 showNewGame = false
-                onJoinRoom(code, difficulty)
+                onJoinRoom(code, difficulty, timer)
             })
         }
         .task {
@@ -163,6 +163,6 @@ struct RoomsView: View {
 
 #Preview {
     NavigationStack {
-        RoomsView(uid: "user1", onJoinRoom: { _, _ in })
+        RoomsView(uid: "user1", onJoinRoom: { _, _, _ in })
     }
 }

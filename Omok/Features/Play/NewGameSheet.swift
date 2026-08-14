@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NewGameSheet: View {
     let uid: String
-    let onJoin: (String, AIDifficulty?) -> Void
+    let onJoin: (String, AIDifficulty?, Int?) -> Void
 
     @AppStorage(TurnTimer.storageKey) private var timerDurationPreference = 0
     @State private var roomCode = ""
@@ -86,10 +86,14 @@ struct NewGameSheet: View {
 
                 Button {
                     if isAIGame {
-                        onJoin(generateRandomCode(), aiDifficulty)
+                        let timerDuration = timerDurationPreference > 0 ? timerDurationPreference : nil
+                        onJoin(generateRandomCode(), aiDifficulty, timerDuration)
                     } else {
                         let trimmed = roomCode.trimmingCharacters(in: .whitespaces)
-                        if !trimmed.isEmpty { onJoin(trimmed, nil) }
+                        if !trimmed.isEmpty {
+                            let timerDuration = isExistingGame ? existingTimerDuration : (timerDurationPreference > 0 ? timerDurationPreference : nil)
+                            onJoin(trimmed, nil, timerDuration)
+                        }
                     }
                 } label: {
                     Text(isAIGame ? "Start Game" : "Join Game")
@@ -139,5 +143,5 @@ struct NewGameSheet: View {
 }
 
 #Preview {
-    NewGameSheet(uid: "user1", onJoin: { _, _ in })
+    NewGameSheet(uid: "user1", onJoin: { _, _, _ in })
 }
