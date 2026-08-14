@@ -232,31 +232,29 @@ struct GameView: View {
 
                     Spacer()
 
-                    // Undo button (disabled for AI games)
-                    if !viewModel.isAIGame {
-                        if viewModel.canRequestUndo {
-                            Button(action: {
-                                Task {
-                                    await viewModel.requestUndo()
-                                }
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrow.uturn.left")
-                                        .font(.system(size: 14))
-                                    Text("Undo")
-                                        .font(.subheadline)
-                                }
-                                .foregroundColor(.blue)
+                    // Undo button
+                    if viewModel.canRequestUndo {
+                        Button(action: {
+                            Task {
+                                await viewModel.requestUndo()
                             }
-                        } else if viewModel.undoRequestPending {
+                        }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.uturn.left")
                                     .font(.system(size: 14))
-                                Text("Undo…")
+                                Text("Undo")
                                     .font(.subheadline)
                             }
-                            .foregroundColor(.gray)
+                            .foregroundColor(.blue)
                         }
+                    } else if viewModel.undoRequestPending {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.uturn.left")
+                                .font(.system(size: 14))
+                            Text("Undo…")
+                                .font(.subheadline)
+                        }
+                        .foregroundColor(.gray)
                     }
 
                     Spacer()

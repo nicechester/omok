@@ -101,15 +101,17 @@ class LocalGameRepository: GameRepository {
     }
 
     func requestUndo(gameId: String, uid: String) async throws {
-        throw GameError.undoNotAllowed
+        try await baseRepository.requestUndo(gameId: gameId, uid: uid)
+        // AI auto-approves immediately
+        try await baseRepository.approveUndo(gameId: gameId, uid: Self.aiUid)
     }
 
     func approveUndo(gameId: String, uid: String) async throws {
-        throw GameError.undoNotAllowed
+        try await baseRepository.approveUndo(gameId: gameId, uid: uid)
     }
 
     func rejectUndo(gameId: String, uid: String) async throws {
-        // No-op
+        try await baseRepository.rejectUndo(gameId: gameId, uid: uid)
     }
 
     func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws {

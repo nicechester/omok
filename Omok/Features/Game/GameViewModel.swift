@@ -451,6 +451,9 @@ final class GameViewModel {
         isAIThinking = true
         defer { isAIThinking = false }
 
+        // Wait 1 second before AI makes a move
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+
         if let localRepo = repository as? LocalGameRepository {
             do {
                 try await localRepo.performAIMove(gameId: gameId)
@@ -471,10 +474,6 @@ final class GameViewModel {
     }
 
     func requestUndo() async {
-        if isAIGame {
-            errorMessage = "Undo is not available in AI games"
-            return
-        }
         do {
             try await repository.requestUndo(gameId: gameId, uid: uid)
         } catch let error as GameError {
@@ -485,10 +484,6 @@ final class GameViewModel {
     }
 
     func approveUndo() async {
-        if isAIGame {
-            errorMessage = "Undo is not available in AI games"
-            return
-        }
         do {
             try await repository.approveUndo(gameId: gameId, uid: uid)
         } catch let error as GameError {
@@ -499,9 +494,6 @@ final class GameViewModel {
     }
 
     func rejectUndo() async {
-        if isAIGame {
-            return
-        }
         do {
             try await repository.rejectUndo(gameId: gameId, uid: uid)
         } catch let error as GameError {
