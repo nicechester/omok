@@ -40,6 +40,12 @@ struct UndoRequest: Codable, Sendable {
     let createdAt: Int
 }
 
+struct Reaction: Sendable {
+    let from: String
+    let emoji: String
+    let timestamp: Int
+}
+
 struct GameState: Sendable {
     let status: GameStatus
     let turn: Stone
@@ -58,6 +64,7 @@ struct GameState: Sendable {
     let timerDuration: Int?
     let turnStartedAt: Int?
     let scores: [String: Int]
+    let reaction: Reaction?
 
     func seat(of uid: String) -> Stone? {
         for (color, seat) in players {

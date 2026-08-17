@@ -72,6 +72,11 @@
             "requestedBy": { ".validate": "newData.isString() && newData.val() === auth.uid" },
             "createdAt": { ".validate": "newData.isNumber()" }
           },
+          "reaction": {
+            "from":      { ".validate": "newData.isString() && newData.val() === auth.uid" },
+            "emoji":     { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "timestamp": { ".validate": "newData.isNumber()" }
+          },
           "audioFrames": {
             "$frameId": {
               ".validate": "newData.hasChildren(['sequence', 'samples', 'timestamp'])"

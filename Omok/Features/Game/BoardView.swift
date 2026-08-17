@@ -126,7 +126,8 @@ struct BoardView: View {
         speaking: [:],
         timerDuration: nil,
         turnStartedAt: nil,
-        scores: ["user1": 2, "user2": 1]
+        scores: ["user1": 2, "user2": 1],
+        reaction: nil
     )
 
     BoardView(

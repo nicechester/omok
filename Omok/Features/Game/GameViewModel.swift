@@ -15,6 +15,7 @@ final class GameViewModel {
     var remainingSeconds: Int?
     var isAIThinking: Bool = false
     var isViewVisible: Bool = false
+    var pendingReaction: Reaction?
     private var hadOpponent = false
     private var currentScenePhase: ScenePhase = .active
     let timerDuration: Int?
@@ -34,6 +35,17 @@ final class GameViewModel {
     private var aiMoveTask: Task<Void, Never>? {
         get { aiMoveTaskBox.task }
         set { aiMoveTaskBox.task = newValue }
+    }
+
+    // A plain box for reaction clear task
+    private final class ReactionTaskBox {
+        var task: Task<Void, Never>?
+        deinit { task?.cancel() }
+    }
+    private let reactionTaskBox = ReactionTaskBox()
+    private var reactionTask: Task<Void, Never>? {
+        get { reactionTaskBox.task }
+        set { reactionTaskBox.task = newValue }
     }
 
     // A plain (non-actor-isolated) box so `deinit` — which runs nonisolated —
@@ -383,6 +395,19 @@ final class GameViewModel {
         // Update timer state
         updateTimerState(for: state, force: false)
 
+        // Show incoming reaction bubble (only reactions from opponent)
+        if let reaction = state.reaction, reaction.from != uid {
+            let isNew = previousGame?.reaction?.timestamp != reaction.timestamp
+            if isNew {
+                pendingReaction = reaction
+                reactionTask?.cancel()
+                reactionTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 2_500_000_000)
+                    self?.pendingReaction = nil
+                }
+            }
+        }
+
         // If AI game and it's AI's turn at game start (e.g. after rematch color swap), trigger AI move
         if isAIGame, state.status == .playing, previousGame?.status != .playing,
            let mySeat, state.turn != mySeat {
@@ -501,6 +526,16 @@ final class GameViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func sendReaction(_ emoji: String) async {
+        pendingReaction = Reaction(from: uid, emoji: emoji, timestamp: Int(Date().timeIntervalSince1970 * 1000))
+        reactionTask?.cancel()
+        reactionTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            self?.pendingReaction = nil
+        }
+        try? await repository.sendReaction(gameId: gameId, uid: uid, emoji: emoji)
     }
 
     private func scheduleUndoAutoReject() {
