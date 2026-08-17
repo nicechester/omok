@@ -84,6 +84,10 @@ struct OmokApp: App {
             .onOpenURL { url in
                 handleDeepLink(url)
             }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                guard let url = activity.webpageURL else { return }
+                handleUniversalLink(url)
+            }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("omokOpenGame"))) { notification in
                 if let gameId = notification.userInfo?["gameId"] as? String {
                     pendingGameCode = gameId
@@ -109,6 +113,17 @@ struct OmokApp: App {
            let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
            !code.isEmpty {
             pendingGameCode = code
+        }
+    }
+
+    private func handleUniversalLink(_ url: URL) {
+        // Handle https://omok-5-in-a-row.web.app/join/{code}
+        guard url.host == "omok-5-in-a-row.web.app" else { return }
+        let components = url.pathComponents
+        if let joinIndex = components.firstIndex(of: "join"),
+           components.indices.contains(joinIndex + 1) {
+            let code = components[joinIndex + 1]
+            if !code.isEmpty { pendingGameCode = code }
         }
     }
 }

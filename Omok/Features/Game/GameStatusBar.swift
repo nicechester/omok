@@ -53,7 +53,7 @@ struct GameStatusBar: View {
 
                     // Share button
                     ShareLink(
-                        item: URL(string: "omok://join?code=\(gameId)") ?? URL(fileURLWithPath: ""),
+                        item: URL(string: "https://omok-5-in-a-row.web.app/join/\(gameId)") ?? URL(fileURLWithPath: ""),
                         subject: Text("Join Omok"),
                         message: Text("Join my game with code: \(gameId)")
                     ) {

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join Omok Game</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #1c1c1e; color: #fff; }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    p { color: #aaa; margin-bottom: 2rem; }
+    a.btn { background: #0a84ff; color: #fff; padding: 0.75rem 2rem; border-radius: 12px; text-decoration: none; font-size: 1rem; font-weight: 600; }
+    a.store { display: block; margin-top: 1rem; color: #aaa; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>⚫ Omok</h1>
+  <p id="msg">You've been invited to a game.</p>
+  <a class="btn" id="deeplink" href="#">Open in Omok</a>
+  <a class="store" href="https://apps.apple.com/app/id6745786629">Get Omok on the App Store</a>
+  <script>
+    const code = location.pathname.split('/join/')[1] || '';
+    if (code) {
+      document.getElementById('msg').textContent = 'Room code: ' + code;
+      document.getElementById('deeplink').href = 'omok://join?code=' + code;
+    }
+  </script>
+</body>
+</html>
