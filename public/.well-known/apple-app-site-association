@@ -3,8 +3,13 @@
     "apps": [],
     "details": [
       {
-        "appID": "WSJ4FXTHUT.io.github.nicechester.omok",
-        "paths": ["/join/*"]
+        "appID": "K92B539W6W.io.github.nicechester.omok",
+        "components": [
+          {
+            "/": "/*",
+            "comment": "Matches all paths"
+          }
+        ]
       }
     ]
   }
