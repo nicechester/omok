@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.nicechester.omok",
+      "sha256_cert_fingerprints": [
+        "AE:2E:7D:11:28:EB:5C:88:61:96:D2:BE:5C:C9:4C:B6:A8:22:51:F2:11:FA:53:E8:D6:1C:42:9E:83:E2:00:A8",
+        "4A:8E:96:C8:9D:D3:BC:5B:3E:E4:ED:F7:61:96:F9:F3:3A:F7:1C:00:1E:E5:D9:17:68:28:E7:04:05:B1:0F:CD"
+      ]
+    }
+  }
+]
