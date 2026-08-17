@@ -40,12 +40,12 @@ struct OmokApp: App {
     @State private var authService: AuthService
     @State private var pendingGameCode: String?
     @AppStorage(PlayerName.storageKey) private var playerName = ""
-
+    
     init() {
         FirebaseApp.configure()
         _authService = State(initialValue: AuthService())
     }
-
+    
     var body: some Scene {
         WindowGroup {
             Group {
@@ -82,11 +82,7 @@ struct OmokApp: App {
             }
             .environment(authService)
             .onOpenURL { url in
-                handleDeepLink(url)
-            }
-            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                guard let url = activity.webpageURL else { return }
-                handleUniversalLink(url)
+                handleIncomingURL(url)
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("omokOpenGame"))) { notification in
                 if let gameId = notification.userInfo?["gameId"] as? String {
@@ -95,35 +91,30 @@ struct OmokApp: App {
             }
         }
     }
-
+    
     private func requestNotificationPermissionIfNeeded() async {
         if NotificationSettings.isEnabled {
             _ = await NotificationManager.shared.requestAuthorization()
         }
     }
     
-    private func handleDeepLink(_ url: URL) {
-        // Handle omok://join?code=abc12
-        guard url.scheme == "omok",
-              url.host == "join" else {
+    private func handleIncomingURL(_ url: URL) {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
+        
+        // 1. Check query parameter: ?code=icjcj (Works for both omok:// and https://)
+        if let code = components.queryItems?.first(where: { $0.name == "code" })?.value, !code.isEmpty {
+            pendingGameCode = code
             return
         }
         
-        if let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
-           let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
-           !code.isEmpty {
-            pendingGameCode = code
-        }
-    }
-
-    private func handleUniversalLink(_ url: URL) {
-        // Handle https://omok-5-in-a-row.web.app/join/{code}
-        guard url.host == "omok-5-in-a-row.web.app" else { return }
-        let components = url.pathComponents
-        if let joinIndex = components.firstIndex(of: "join"),
-           components.indices.contains(joinIndex + 1) {
-            let code = components[joinIndex + 1]
-            if !code.isEmpty { pendingGameCode = code }
+        // 2. Fallback: Check path parameter: /join/icjcj
+        let pathComponents = url.pathComponents.filter { $0 != "/" }
+        if let joinIndex = pathComponents.firstIndex(of: "join"),
+           pathComponents.indices.contains(joinIndex + 1) {
+            let code = pathComponents[joinIndex + 1]
+            if !code.isEmpty {
+                pendingGameCode = code
+            }
         }
     }
 }
