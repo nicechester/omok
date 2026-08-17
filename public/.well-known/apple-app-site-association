@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "WSJ4FXTHUT.io.github.nicechester.omok",
+        "paths": ["/join/*"]
+      }
+    ]
+  }
+}
