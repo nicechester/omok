@@ -21,7 +21,10 @@
     const code = location.pathname.split('/join/')[1] || '';
     if (code) {
       document.getElementById('msg').textContent = 'Room code: ' + code;
-      document.getElementById('deeplink').href = 'omok://join?code=' + code;
+      const isAndroid = /android/i.test(navigator.userAgent);
+      document.getElementById('deeplink').href = isAndroid
+        ? 'https://omok-5-in-a-row.web.app/join/' + code
+        : 'omok://join?code=' + code;
     }
   </script>
 </body>

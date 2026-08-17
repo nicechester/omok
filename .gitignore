@@ -5,3 +5,5 @@ DerivedData/
 .DS_Store
 xcuserdata/
 *.p8.firebase/
+.firebase/
+*.p8
