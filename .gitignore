@@ -4,4 +4,4 @@ build/
 DerivedData/
 .DS_Store
 xcuserdata/
-*.p8
+*.p8.firebase/
