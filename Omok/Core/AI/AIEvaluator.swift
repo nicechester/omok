@@ -38,11 +38,11 @@ enum AIEvaluator {
     }
 
     private static func scoreForLine(from cell: Cell, dir: (dr: Int, dc: Int), color: Stone, board: [Cell: Stone]) -> Int {
-        // Collect a window of 5 cells
+        // Collect up to 5 cells, stopping at board edge
         var cells: [Cell] = []
         var cur = cell
         for _ in 0..<5 {
-            guard GomokuRules.isValid(cell: cur) else { return 0 }
+            guard GomokuRules.isValid(cell: cur) else { break }
             cells.append(cur)
             cur = Cell(r: cur.r + dir.dr, c: cur.c + dir.dc)
         }
