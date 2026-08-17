@@ -366,7 +366,7 @@ final class GameViewModel {
         }
 
         // Notify if in background
-        notifyIfNeeded(state, previous: previousGame)
+        // Local notifications removed: server push (notifyTurn Cloud Function) handles turn notifications
 
         // Handle undo request state changes
         if state.undoRequest != nil, previousGame?.undoRequest == nil {
