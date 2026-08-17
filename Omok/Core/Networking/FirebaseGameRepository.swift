@@ -552,6 +552,17 @@ final class FirebaseGameRepository: GameRepository {
         try await ref.updateChildValues(updates)
     }
 
+    // MARK: - Reaction
+
+    func sendReaction(gameId: String, uid: String, emoji: String) async throws {
+        let updates: [String: Any] = [
+            "reaction/from": uid,
+            "reaction/emoji": emoji,
+            "reaction/timestamp": Int(Date().timeIntervalSince1970 * 1000)
+        ]
+        try await gameRef(gameId).updateChildValues(updates)
+    }
+
     // MARK: - Auto-pass turn
 
     func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws {
@@ -714,6 +725,14 @@ final class FirebaseGameRepository: GameRepository {
             }
         }
 
+        var reaction: Reaction?
+        if let reactionDict = dict["reaction"] as? [String: Any],
+           let from = reactionDict["from"] as? String,
+           let emoji = reactionDict["emoji"] as? String,
+           let timestamp = reactionDict["timestamp"] as? Int {
+            reaction = Reaction(from: from, emoji: emoji, timestamp: timestamp)
+        }
+
         return GameState(
             status: status,
             turn: turn,
@@ -731,7 +750,8 @@ final class FirebaseGameRepository: GameRepository {
             speaking: speaking,
             timerDuration: timerDuration,
             turnStartedAt: turnStartedAt,
-            scores: scores
+            scores: scores,
+            reaction: reaction
         )
     }
 }

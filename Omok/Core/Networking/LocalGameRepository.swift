@@ -118,6 +118,10 @@ class LocalGameRepository: GameRepository {
         try await baseRepository.autoPassTurn(gameId: gameId, expectedTurn: expectedTurn, expectedTurnStartedAt: expectedTurnStartedAt)
     }
 
+    func sendReaction(gameId: String, uid: String, emoji: String) async throws {
+        // No-op for AI games
+    }
+
     func deleteGame(gameId: String, uid: String) async throws {
         try await baseRepository.deleteGame(gameId: gameId, uid: uid)
     }

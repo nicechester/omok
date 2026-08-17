@@ -15,6 +15,7 @@ protocol GameRepository {
     func approveUndo(gameId: String, uid: String) async throws
     func rejectUndo(gameId: String, uid: String) async throws
     func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws
+    func sendReaction(gameId: String, uid: String, emoji: String) async throws
     func deleteGame(gameId: String, uid: String) async throws
 }
 

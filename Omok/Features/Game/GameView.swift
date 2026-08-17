@@ -19,6 +19,7 @@ struct GameView: View {
     @State private var showExitConfirmation = false
     @State private var showForfeitConfirmation = false
     @State private var showUndoPrompt = false
+    @State private var showEmojiTray = false
     @State private var isMicEnabled = false
     @State private var isSpeaking = false
     @State private var opponentSpeaking = false
@@ -230,6 +231,14 @@ struct GameView: View {
                             .foregroundColor(isMicEnabled ? .blue : .gray)
                     }
 
+                    if viewModel.mySeat != nil, viewModel.game?.status == .playing {
+                        Button(action: { showEmojiTray.toggle() }) {
+                            Image(systemName: "face.smiling")
+                                .font(.system(size: 18))
+                                .foregroundColor(showEmojiTray ? .blue : .gray)
+                        }
+                    }
+
                     Spacer()
 
                     // Undo button
@@ -275,6 +284,20 @@ struct GameView: View {
                     }
                 }
                 .frame(height: 44)
+
+                if showEmojiTray {
+                    let emojis = ["😄", "😮", "👏", "🤔", "😅", "🎉"]
+                    HStack(spacing: 16) {
+                        ForEach(emojis, id: \.self) { emoji in
+                            Button(emoji) {
+                                showEmojiTray = false
+                                Task { await viewModel.sendReaction(emoji) }
+                            }
+                            .font(.title2)
+                        }
+                    }
+                    .transition(.opacity)
+                }
             }
             .padding(.horizontal)
         }
@@ -308,6 +331,15 @@ struct GameView: View {
             .padding()
 
             Spacer()
+
+            if let reaction = viewModel.pendingReaction {
+                Text(reaction.emoji)
+                    .font(.system(size: 72))
+                    .transition(.scale.combined(with: .opacity))
+                    .id(reaction.timestamp)
+                    .animation(.spring(duration: 0.3), value: reaction.timestamp)
+                    .allowsHitTesting(false)
+            }
 
             if !transcripts.isEmpty {
                 TranscriptBannerView(transcripts: transcripts, mySeat: viewModel.mySeat)
