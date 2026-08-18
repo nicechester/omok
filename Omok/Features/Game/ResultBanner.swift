@@ -17,19 +17,21 @@ struct ResultBanner: View {
                     .foregroundColor(resultColor(for: result))
             }
 
-            // Rematch button
-            Button(action: onRematchTapped) {
-                HStack {
-                    Image(systemName: didVoteRematch ? "checkmark.circle.fill" : "arrow.clockwise")
-                    Text(didVoteRematch ? "Waiting for opponent…" : "Rematch")
+            // Rematch button (only for players, not spectators)
+            if !isSpectator {
+                Button(action: onRematchTapped) {
+                    HStack {
+                        Image(systemName: didVoteRematch ? "checkmark.circle.fill" : "arrow.clockwise")
+                        Text(didVoteRematch ? "Waiting for opponent…" : "Rematch")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(didVoteRematch ? Color.gray.opacity(0.3) : Color.blue)
+                    .foregroundColor(didVoteRematch ? .gray : .white)
+                    .cornerRadius(8)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(didVoteRematch ? Color.gray.opacity(0.3) : Color.blue)
-                .foregroundColor(didVoteRematch ? .gray : .white)
-                .cornerRadius(8)
+                .disabled(didVoteRematch)
             }
-            .disabled(didVoteRematch)
         }
         .padding(20)
         .background(
