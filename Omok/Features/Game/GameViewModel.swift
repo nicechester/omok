@@ -277,9 +277,10 @@ final class GameViewModel {
             return "Waiting for opponent"
         case .playing:
             if isSpectator { return "Spectating" }
+            if let mySeat, game.turn == mySeat { return "Your turn" }
             if isAIThinking { return "AI thinking…" }
-            if canPlay { return "Your turn" }
-            return isAIGame ? "AI's turn" : (opponentName.map { "\($0)'s turn" } ?? "Opponent's turn")
+            if isAIGame { return "AI's turn" }
+            return opponentName.map { "\($0)'s turn" } ?? "Opponent's turn"
         case .finished:
             return resultText(for: game)
         }
