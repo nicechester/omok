@@ -91,7 +91,7 @@ actor AIPlayer {
         if isMaximizing {
             // AI's turn: maximize score
             var maxEval = -10_000_000
-            let candidates = generateCandidates(board: board, moveCount: board.count)
+            let candidates = generateCandidates(board: board, moveCount: board.count, for: aiColor)
 
             for candidate in candidates {
                 if Date() >= deadline {
@@ -111,7 +111,7 @@ actor AIPlayer {
         } else {
             // Opponent's turn: minimize score
             var minEval = 10_000_000
-            let candidates = generateCandidates(board: board, moveCount: board.count)
+            let candidates = generateCandidates(board: board, moveCount: board.count, for: playerColor)
 
             for candidate in candidates {
                 if Date() >= deadline {
@@ -132,8 +132,9 @@ actor AIPlayer {
     }
 
     /// Generate candidate moves by finding cells near existing stones.
-    /// Also filters out 3x3 rule violations.
-    private func generateCandidates(board: [Cell: Stone], moveCount: Int) -> [Cell] {
+    /// Also filters out 3x3 rule violations for the specified color.
+    private func generateCandidates(board: [Cell: Stone], moveCount: Int, for color: Stone? = nil) -> [Cell] {
+        let filterColor = color ?? aiColor
         var candidates: Set<Cell> = []
         var candidateList: [Cell] = []
 
@@ -154,13 +155,13 @@ actor AIPlayer {
             }
         }
 
-        // Filter candidates: remove 3x3 violations
+        // Filter candidates: remove 3x3 rule violations
         for candidate in candidates {
             var testBoard = board
-            testBoard[candidate] = aiColor
+            testBoard[candidate] = filterColor
 
-            // Check if placing at this candidate creates two open threes
-            let openThrees = GomokuRules.countOpenThrees(board: testBoard, from: candidate, color: aiColor)
+            // Check if placing at this candidate creates two or more open threes
+            let openThrees = GomokuRules.countOpenThrees(board: testBoard, from: candidate, color: filterColor)
             if openThrees < 2 {
                 candidateList.append(candidate)
             }
