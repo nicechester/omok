@@ -24,6 +24,7 @@
         }
       },
       "games": {
+        ".indexOn": ["updatedAt"],
         "$gameId": {
           ".read": "auth != null",
           ".write": "auth != null && (!data.exists() || data.child('createdBy').val() === auth.uid || data.child('players').child(auth.uid).exists() || newData.child('createdBy').val() === auth.uid)",

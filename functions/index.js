@@ -1,4 +1,5 @@
 const { onValueWritten } = require("firebase-functions/v2/database");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -61,4 +62,24 @@ exports.notifyTurn = onValueWritten("/omok/games/{gameId}/turn", async (event) =
   } catch (error) {
     logger.error("Failed to send notification", { error: error.message });
   }
+});
+
+exports.cleanupOldGames = onSchedule("every 24 hours", async () => {
+  const db = getDatabase();
+  const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+
+  const snap = await db.ref("/omok/games").orderByChild("updatedAt").endAt(cutoff).get();
+  if (!snap.exists()) {
+    logger.info("No old games to clean up");
+    return;
+  }
+
+  const updates = {};
+  snap.forEach((child) => {
+    updates[`/omok/games/${child.key}`] = null;
+    updates[`/omok/audio/${child.key}`] = null;
+  });
+
+  await db.ref().update(updates);
+  logger.info("Cleaned up old games", { count: Object.keys(updates).length / 2 });
 });
