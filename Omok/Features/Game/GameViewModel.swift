@@ -22,6 +22,7 @@ final class GameViewModel {
     let aiDifficulty: AIDifficulty?
 
     private let uid: String
+    private var effectiveUID: String  // uid after claimSeat (may differ if migrated from old Firebase UID)
     private let playerName: String
     private let repository: GameRepository
     private var backgroundedAt: Date?
@@ -98,6 +99,7 @@ final class GameViewModel {
     init(gameId: String, uid: String, playerName: String, timerDuration: Int? = nil, aiDifficulty: AIDifficulty? = nil, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
         self.uid = uid
+        self.effectiveUID = uid
         self.playerName = playerName
         self.timerDuration = timerDuration
         self.aiDifficulty = aiDifficulty
@@ -121,13 +123,13 @@ final class GameViewModel {
 
     func markPlayerAsActive() {
         Task {
-            try? await repository.updatePlayerActive(gameId: gameId, uid: uid, isActive: true)
+            try? await repository.updatePlayerActive(gameId: gameId, uid: effectiveUID, isActive: true)
         }
     }
 
     func markPlayerAsDisconnected() {
         Task {
-            try? await repository.updatePlayerActive(gameId: gameId, uid: uid, isActive: false)
+            try? await repository.updatePlayerActive(gameId: gameId, uid: effectiveUID, isActive: false)
         }
     }
 
@@ -149,7 +151,7 @@ final class GameViewModel {
         // Update player's active status when coming back online
         if mySeat != nil {
             Task {
-                try? await repository.updatePlayerActive(gameId: gameId, uid: uid, isActive: true)
+                try? await repository.updatePlayerActive(gameId: gameId, uid: effectiveUID, isActive: true)
             }
         }
 
@@ -258,7 +260,7 @@ final class GameViewModel {
     }
 
     var didVoteRematch: Bool {
-        game?.rematchVotes.contains(uid) ?? false
+        game?.rematchVotes.contains(effectiveUID) ?? false
     }
 
     var bothVotedRematch: Bool {
@@ -279,7 +281,7 @@ final class GameViewModel {
             if isSpectator { return "Spectating" }
             if let mySeat, game.turn == mySeat { return "Your turn" }
             if isAIThinking { return "AI thinking…" }
-            if isAIGame { return "AI's turn" }
+            if isAIGame, game.players[game.turn]?.uid == "ai-player" { return "AI's turn" }
             return opponentName.map { "\($0)'s turn" } ?? "Opponent's turn"
         case .finished:
             return resultText(for: game)
@@ -311,7 +313,7 @@ final class GameViewModel {
     var showUndoPrompt: Bool {
         guard let game, let mySeat, let undoRequest = game.undoRequest else { return false }
         // Show prompt to the opponent (not the requester)
-        return undoRequest.requestedBy != uid
+        return undoRequest.requestedBy != effectiveUID
     }
 
     var undoRequesterName: String? {
@@ -324,7 +326,9 @@ final class GameViewModel {
 
     func start() async {
         do {
-            mySeat = try await repository.claimSeat(gameId: gameId, uid: uid, name: playerName)
+            let (seat, euid) = try await repository.claimSeat(gameId: gameId, uid: uid, name: playerName)
+            mySeat = seat
+            effectiveUID = euid
         } catch GameError.gameNotFound {
             // Game doesn't exist yet, create it (creator gets black seat)
             do {
@@ -369,7 +373,11 @@ final class GameViewModel {
         game = state
 
         // Update mySeat from game state (handles color swap on rematch)
-        mySeat = state.seat(of: uid)
+        // Only overwrite if we already have a seat (avoids nil-ing out due to stale snapshot
+        // arriving before claimSeat write propagates, or claimSeat errors)
+        if mySeat != nil {
+            mySeat = state.seat(of: effectiveUID)
+        }
 
         // Play sound when opponent joins
         if let mySeat,
@@ -384,7 +392,7 @@ final class GameViewModel {
         // Handle undo request state changes
         if state.undoRequest != nil, previousGame?.undoRequest == nil {
             // New undo request appeared; schedule timeout if we're the opponent
-            if let undoRequest = state.undoRequest, undoRequest.requestedBy != uid {
+            if let undoRequest = state.undoRequest, undoRequest.requestedBy != effectiveUID {
                 scheduleUndoAutoReject()
             }
         } else if state.undoRequest == nil, previousGame?.undoRequest != nil {
@@ -397,7 +405,7 @@ final class GameViewModel {
         updateTimerState(for: state, force: false)
 
         // Show incoming reaction bubble (only reactions from opponent)
-        if let reaction = state.reaction, reaction.from != uid {
+        if let reaction = state.reaction, reaction.from != effectiveUID {
             let isNew = previousGame?.reaction?.timestamp != reaction.timestamp
             if isNew {
                 pendingReaction = reaction
@@ -420,7 +428,7 @@ final class GameViewModel {
 
         guard state.status == .finished, bothVotedRematch else { return }
         // Only creator drives the reset to avoid race condition between clients
-        guard state.createdBy == uid else { return }
+        guard state.createdBy == effectiveUID else { return }
         do {
             try await repository.resetForRematch(gameId: gameId)
         } catch {
@@ -433,7 +441,7 @@ final class GameViewModel {
     func place(_ cell: Cell) async {
         guard canPlay else { return }
         do {
-            try await repository.placeStone(gameId: gameId, at: cell, uid: uid)
+            try await repository.placeStone(gameId: gameId, at: cell, uid: effectiveUID)
             // For AI games, start AI move in background after human move
             if isAIGame {
                 aiMoveTask = Task { @MainActor [weak self] in
@@ -452,7 +460,7 @@ final class GameViewModel {
         aiMoveTask?.cancel()
         aiMoveTask = nil
         do {
-            try await repository.forfeit(gameId: gameId, uid: uid)
+            try await repository.forfeit(gameId: gameId, uid: effectiveUID)
         } catch let error as GameError {
             errorMessage = error.errorDescription
         } catch {
@@ -462,7 +470,7 @@ final class GameViewModel {
 
     func requestRematch() async {
         do {
-            try await repository.voteRematch(gameId: gameId, uid: uid)
+            try await repository.voteRematch(gameId: gameId, uid: effectiveUID)
         } catch let error as GameError {
             errorMessage = error.errorDescription
         } catch {
@@ -493,7 +501,7 @@ final class GameViewModel {
 
     func updateSpeaking(_ isSpeaking: Bool) async {
         do {
-            try await repository.updateSpeaking(gameId: gameId, uid: uid, isSpeaking: isSpeaking)
+            try await repository.updateSpeaking(gameId: gameId, uid: effectiveUID, isSpeaking: isSpeaking)
         } catch {
             print("Failed to update speaking state: \(error)")
         }
@@ -501,7 +509,7 @@ final class GameViewModel {
 
     func requestUndo() async {
         do {
-            try await repository.requestUndo(gameId: gameId, uid: uid)
+            try await repository.requestUndo(gameId: gameId, uid: effectiveUID)
         } catch let error as GameError {
             errorMessage = error.errorDescription
         } catch {
@@ -511,7 +519,7 @@ final class GameViewModel {
 
     func approveUndo() async {
         do {
-            try await repository.approveUndo(gameId: gameId, uid: uid)
+            try await repository.approveUndo(gameId: gameId, uid: effectiveUID)
         } catch let error as GameError {
             errorMessage = error.errorDescription
         } catch {
@@ -521,7 +529,7 @@ final class GameViewModel {
 
     func rejectUndo() async {
         do {
-            try await repository.rejectUndo(gameId: gameId, uid: uid)
+            try await repository.rejectUndo(gameId: gameId, uid: effectiveUID)
         } catch let error as GameError {
             errorMessage = error.errorDescription
         } catch {
@@ -530,13 +538,13 @@ final class GameViewModel {
     }
 
     func sendReaction(_ emoji: String) async {
-        pendingReaction = Reaction(from: uid, emoji: emoji, timestamp: Int(Date().timeIntervalSince1970 * 1000))
+        pendingReaction = Reaction(from: effectiveUID, emoji: emoji, timestamp: Int(Date().timeIntervalSince1970 * 1000))
         reactionTask?.cancel()
         reactionTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 2_500_000_000)
             self?.pendingReaction = nil
         }
-        try? await repository.sendReaction(gameId: gameId, uid: uid, emoji: emoji)
+        try? await repository.sendReaction(gameId: gameId, uid: effectiveUID, emoji: emoji)
     }
 
     private func scheduleUndoAutoReject() {
@@ -546,7 +554,7 @@ final class GameViewModel {
             try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 seconds
             if Task.isCancelled { return }
             do {
-                try await repository.rejectUndo(gameId: gameId, uid: uid)
+                try await repository.rejectUndo(gameId: gameId, uid: effectiveUID)
             } catch {
                 // Silently ignore: timeout reject is best-effort
             }

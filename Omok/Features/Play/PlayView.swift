@@ -12,7 +12,10 @@ struct PlayView: View {
 
     var body: some View {
         if let gameId = activeGameId {
-            GameView(gameId: gameId, uid: uid, playerName: playerName, aiDifficulty: aiDifficulty, onLeave: { activeGameId = nil }, timerDuration: timerDuration)
+            GameView(gameId: gameId, uid: uid, playerName: playerName, aiDifficulty: aiDifficulty, onLeave: {
+                activeGameId = nil
+                aiDifficulty = nil
+            }, timerDuration: timerDuration)
                 .id(gameId)
         } else {
             ContentUnavailableView {

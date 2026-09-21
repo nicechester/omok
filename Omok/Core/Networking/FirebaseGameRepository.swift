@@ -15,6 +15,20 @@ final class FirebaseGameRepository: GameRepository {
         database.child("omok/games").child(gameId)
     }
 
+    private func uidMappingRef(_ deviceUID: String) -> DatabaseReference {
+        database.child("omok/uidMappings").child(deviceUID)
+    }
+
+    /// Returns all UIDs (device + mapped Firebase UIDs) to check for seat ownership.
+    private func allKnownUIDs(deviceUID: String) async -> Set<String> {
+        var uids: Set<String> = [deviceUID]
+        if let snapshot = try? await uidMappingRef(deviceUID).child("firebaseUids").getData(),
+           let mapped = snapshot.value as? [String] {
+            uids.formUnion(mapped)
+        }
+        return uids
+    }
+
     // MARK: - Listen
 
     func listenToGame(gameId: String) -> AsyncStream<GameState?> {
@@ -82,7 +96,7 @@ final class FirebaseGameRepository: GameRepository {
 
     // MARK: - Claim seat
 
-    func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone {
+    func claimSeat(gameId: String, uid: String, name: String) async throws -> (Stone, effectiveUID: String) {
         let ref = gameRef(gameId)
         let sanitizedName = PlayerName.sanitize(name)
 
@@ -94,17 +108,38 @@ final class FirebaseGameRepository: GameRepository {
 
         let players = dict["players"] as? [String: Any] ?? [:]
 
-        // Check if already seated
+        // Check if already seated under current device UID
         if let existingPlayer = players[uid] as? [String: Any],
            let colorRaw = existingPlayer["color"] as? String,
            let color = Stone(rawValue: colorRaw) {
-            // Already seated, update name if needed
             let existingName = existingPlayer["name"] as? String ?? ""
             if existingName != sanitizedName, !sanitizedName.isEmpty {
                 try await ref.child("players/\(uid)/name").setValue(sanitizedName)
                 try await ref.child("updatedAt").setValue(ServerValue.timestamp())
             }
-            return color
+            return (color, uid)
+        }
+
+        // Backward compat: check if seated under an old Firebase UID, migrate to device UID
+        let knownUIDs = await allKnownUIDs(deviceUID: uid)
+        for (playerUid, playerData) in players {
+            guard knownUIDs.contains(playerUid),
+                  playerUid != uid,
+                  let playerDict = playerData as? [String: Any],
+                  let colorRaw = playerDict["color"] as? String,
+                  let color = Stone(rawValue: colorRaw) else { continue }
+            var migratedPlayer = playerDict
+            if !sanitizedName.isEmpty { migratedPlayer["name"] = sanitizedName }
+            var updates: [String: Any] = [
+                "players/\(uid)": migratedPlayer,
+                "players/\(playerUid)": NSNull(),
+                "updatedAt": ServerValue.timestamp()
+            ]
+            if dict["createdBy"] as? String == playerUid {
+                updates["createdBy"] = uid
+            }
+            try await ref.updateChildValues(updates)
+            return (color, uid)
         }
 
         // Find which colors are taken
@@ -142,7 +177,7 @@ final class FirebaseGameRepository: GameRepository {
         }
 
         try await ref.updateChildValues(updates)
-        return seatColor
+        return (seatColor, uid)
     }
 
     // MARK: - Place stone
@@ -313,11 +348,9 @@ final class FirebaseGameRepository: GameRepository {
             throw GameError.gameNotFound
         }
 
-        let createdBy = dict["createdBy"] as? String
         let players = dict["players"] as? [String: Any] ?? [:]
-        let isSeated = [Stone.black, Stone.white].contains { color in
-            (players[color.rawValue] as? [String: Any])?["uid"] as? String == uid
-        }
+        let createdBy = dict["createdBy"] as? String
+        let isSeated = players[uid] != nil
         guard createdBy == uid || isSeated else {
             throw GameError.deleteNotAllowed
         }
@@ -410,8 +443,6 @@ final class FirebaseGameRepository: GameRepository {
 
     func updatePlayerActive(gameId: String, uid: String, isActive: Bool) async throws {
         let ref = gameRef(gameId)
-
-        // Update active status directly using uid as key
         let updates: [String: Any] = [
             "players/\(uid)/active": isActive,
             "updatedAt": ServerValue.timestamp()
@@ -445,6 +476,7 @@ final class FirebaseGameRepository: GameRepository {
             throw GameError.undoAlreadyPending
         }
 
+        let players = dict["players"] as? [String: Any] ?? [:]
         let updates: [String: Any] = [
             "undoRequest": ["requestedBy": uid, "createdAt": Int(Date().timeIntervalSince1970 * 1000)],
             "updatedAt": ServerValue.timestamp()

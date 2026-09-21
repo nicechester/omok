@@ -3,6 +3,13 @@
     "omok": {
       ".read": "auth != null",
       ".write": "auth != null",
+      "uidMappings": {
+        "$deviceUID": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          "firebaseUids": { ".validate": "newData.hasChildren()" }
+        }
+      },
       "users": {
         "$uid": {
           ".read": "auth != null",
@@ -27,7 +34,7 @@
         ".indexOn": ["updatedAt"],
         "$gameId": {
           ".read": "auth != null",
-          ".write": "auth != null && (!data.exists() || data.child('createdBy').val() === auth.uid || data.child('players').child(auth.uid).exists() || newData.child('createdBy').val() === auth.uid)",
+          ".write": "auth != null && (!data.exists() || data.child('createdBy').val() === auth.uid || data.child('players').child(auth.uid).exists() || newData.child('createdBy').val() === auth.uid || newData.child('players').child(auth.uid).exists())",
           "status":    { ".validate": "newData.isString() && newData.val().matches(/^(waiting|playing|finished)$/)" },
           "turn":      { ".validate": "newData.val() === 'black' || newData.val() === 'white'" },
           "round":     { ".validate": "newData.isNumber() && newData.val() >= 0" },
@@ -67,14 +74,14 @@
             "$uid": { ".validate": "newData.isNumber() && newData.val() >= 0" }
           },
           "rematch": {
-            "$uid": { ".validate": "($uid === auth.uid || $uid === 'ai-player') && newData.val() === true" }
+            "$uid": { ".validate": "newData.val() === true" }
           },
           "undoRequest": {
-            "requestedBy": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+            "requestedBy": { ".validate": "newData.isString()" },
             "createdAt": { ".validate": "newData.isNumber()" }
           },
           "reaction": {
-            "from":      { ".validate": "newData.isString() && newData.val() === auth.uid" },
+            "from":      { ".validate": "newData.isString()" },
             "emoji":     { ".validate": "newData.isString() && newData.val().length <= 8" },
             "timestamp": { ".validate": "newData.isNumber()" }
           },
