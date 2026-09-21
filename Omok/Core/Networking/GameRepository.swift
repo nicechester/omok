@@ -4,7 +4,7 @@ protocol GameRepository {
     func listenToGame(gameId: String) -> AsyncStream<GameState?>
     func fetchGame(gameId: String) async throws -> GameState?
     func createGame(gameId: String, creatorUid: String, creatorName: String, timerDuration: Int?) async throws
-    func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone
+    func claimSeat(gameId: String, uid: String, name: String) async throws -> (Stone, effectiveUID: String)
     func placeStone(gameId: String, at cell: Cell, uid: String) async throws
     func forfeit(gameId: String, uid: String) async throws
     func voteRematch(gameId: String, uid: String) async throws

@@ -49,13 +49,13 @@ struct OmokApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if let uid = authService.currentUserID {
+                if authService.isAuthenticated {
                     if !PlayerName.isValid(playerName) {
                         NavigationStack {
                             NicknameView(isFirstRun: true)
                         }
                     } else {
-                        RootTabView(uid: uid, pendingGameCode: $pendingGameCode)
+                        RootTabView(uid: authService.currentUserID ?? "", pendingGameCode: $pendingGameCode)
                             .task {
                                 // Check for pending game ID from notification
                                 if let gameId = NotificationManager.shared.pendingGameId {

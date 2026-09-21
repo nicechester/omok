@@ -422,7 +422,7 @@ struct GameView: View {
             await audioMessenger.startObservingSessions()
             recentRoomsData = RecentRooms.recordPlay(code: gameId, aiDifficulty: aiDifficulty, in: recentRoomsData)
             await viewModel.start()
-            viewModel.markPlayerAsActive()
+            if !viewModel.isSpectator { viewModel.markPlayerAsActive() }
         }
         .onChange(of: scenePhase) { _, newPhase in
             viewModel.setScenePhase(newPhase)

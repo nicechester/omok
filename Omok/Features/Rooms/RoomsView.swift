@@ -30,7 +30,7 @@ struct RoomsView: View {
                 List(rooms) { room in
                     RoomCell(
                         room: room,
-                        onJoinRoom: { onJoinRoom(room.code, room.aiDifficulty, nil) },
+                        onJoinRoom: { difficulty in onJoinRoom(room.code, difficulty, nil) },
                         onDelete: { deleteRoom(room) },
                         repository: repository
                     )
@@ -148,7 +148,7 @@ struct RoomsView: View {
 
 struct RoomCell: View {
     let room: RecentRoom
-    let onJoinRoom: () -> Void
+    let onJoinRoom: (AIDifficulty?) -> Void
     let onDelete: () -> Void
     let repository: GameRepository
 
@@ -177,7 +177,9 @@ struct RoomCell: View {
 
     var body: some View {
         Button {
-            onJoinRoom()
+            // Use aiDifficulty from stored room only if Firebase confirms an ai-player seat
+            let confirmedDifficulty: AIDifficulty? = game?.players.values.contains(where: { $0.uid == "ai-player" }) == true ? room.aiDifficulty : nil
+            onJoinRoom(confirmedDifficulty)
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {

@@ -74,7 +74,7 @@ class LocalGameRepository: GameRepository {
         try await db.child("omok/games").child(gameId).setValue(data)
     }
 
-    func claimSeat(gameId: String, uid: String, name: String) async throws -> Stone {
+    func claimSeat(gameId: String, uid: String, name: String) async throws -> (Stone, effectiveUID: String) {
         try await baseRepository.claimSeat(gameId: gameId, uid: uid, name: name)
     }
 
