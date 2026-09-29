@@ -75,7 +75,6 @@ final class FirebaseGameRepository: GameRepository {
             "players": [
                 creatorUid: creatorPlayer
             ],
-            "speaking": [:],
             "scores": [:],
             "createdBy": creatorUid,
             "createdAt": ServerValue.timestamp(),
@@ -414,33 +413,6 @@ final class FirebaseGameRepository: GameRepository {
         try await ref.updateChildValues(updates)
     }
 
-    // MARK: - Speaking
-
-    func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws {
-        let ref = gameRef(gameId)
-
-        // Fetch current state to get user's color
-        let snapshot = try await ref.getData()
-        guard let dict = snapshot.value as? [String: Any] else {
-            throw GameError.gameNotFound
-        }
-
-        let players = dict["players"] as? [String: Any] ?? [:]
-
-        guard let playerDict = players[uid] as? [String: Any],
-              let colorRaw = playerDict["color"] as? String else {
-            throw GameError.gameNotFound
-        }
-
-        // Update speaking state for this player's color
-        let updates: [String: Any] = [
-            "speaking/\(colorRaw)": isSpeaking,
-            "updatedAt": ServerValue.timestamp()
-        ]
-
-        try await ref.updateChildValues(updates)
-    }
-
     func updatePlayerActive(gameId: String, uid: String, isActive: Bool) async throws {
         let ref = gameRef(gameId)
         let updates: [String: Any] = [
@@ -595,6 +567,10 @@ final class FirebaseGameRepository: GameRepository {
         try await gameRef(gameId).updateChildValues(updates)
     }
 
+    func clearReaction(gameId: String) async throws {
+        try await gameRef(gameId).child("reaction").removeValue()
+    }
+
     // MARK: - Auto-pass turn
 
     func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws {
@@ -718,17 +694,6 @@ final class FirebaseGameRepository: GameRepository {
             rematchVotes = Set(rematchDict.keys)
         }
 
-        var speaking: [Stone: Bool] = [:]
-        if let speakingDict = dict["speaking"] as? [String: Any] {
-            for (colorKey, value) in speakingDict {
-                guard let color = Stone(rawValue: colorKey),
-                      let isSpeaking = value as? Bool else {
-                    continue
-                }
-                speaking[color] = isSpeaking
-            }
-        }
-
         var undoRequest: UndoRequest?
         if let undoRequestDict = dict["undoRequest"] as? [String: Any],
            let requestedBy = undoRequestDict["requestedBy"] as? String,
@@ -779,7 +744,6 @@ final class FirebaseGameRepository: GameRepository {
             undoRequest: undoRequest,
             previousLastMove: previousLastMove,
             createdBy: createdBy,
-            speaking: speaking,
             timerDuration: timerDuration,
             turnStartedAt: turnStartedAt,
             scores: scores,

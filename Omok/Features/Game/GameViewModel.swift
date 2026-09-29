@@ -95,6 +95,7 @@ final class GameViewModel {
     }
 
     private var timerAnchor: (turn: Stone, turnStartedAt: Int)?
+    private var joinedAt: Int = 0
 
     init(gameId: String, uid: String, playerName: String, timerDuration: Int? = nil, aiDifficulty: AIDifficulty? = nil, repository: GameRepository = FirebaseGameRepository()) {
         self.gameId = gameId
@@ -350,6 +351,7 @@ final class GameViewModel {
             errorMessage = errorMsg
         }
 
+        joinedAt = Int(Date().timeIntervalSince1970 * 1000)
         listenTask?.cancel()
         listenTask = Task { @MainActor [weak self, gameId, repository] in
             guard let self else { return }
@@ -404,15 +406,16 @@ final class GameViewModel {
         // Update timer state
         updateTimerState(for: state, force: false)
 
-        // Show incoming reaction bubble (only reactions from opponent)
-        if let reaction = state.reaction, reaction.from != effectiveUID {
+        // Show incoming reaction bubble (only reactions from opponent, after we joined)
+        if let reaction = state.reaction, reaction.from != effectiveUID, reaction.timestamp > joinedAt {
             let isNew = previousGame?.reaction?.timestamp != reaction.timestamp
             if isNew {
                 pendingReaction = reaction
                 reactionTask?.cancel()
-                reactionTask = Task { @MainActor [weak self] in
+                reactionTask = Task { @MainActor [weak self, gameId, repository] in
                     try? await Task.sleep(nanoseconds: 2_500_000_000)
                     self?.pendingReaction = nil
+                    try? await repository.clearReaction(gameId: gameId)
                 }
             }
         }
@@ -496,14 +499,6 @@ final class GameViewModel {
             } catch {
                 errorMessage = error.localizedDescription
             }
-        }
-    }
-
-    func updateSpeaking(_ isSpeaking: Bool) async {
-        do {
-            try await repository.updateSpeaking(gameId: gameId, uid: effectiveUID, isSpeaking: isSpeaking)
-        } catch {
-            print("Failed to update speaking state: \(error)")
         }
     }
 

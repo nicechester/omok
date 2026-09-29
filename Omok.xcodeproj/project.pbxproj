@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		11111111111111111111111A /* OpenMoji in Resources */ = {isa = PBXBuildFile; fileRef = 11111111111111111111111B /* OpenMoji */; };
 		2842354D852CF6C60107D337 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 49B68FB861DCBC0298D2ACDA /* Assets.xcassets */; };
 		3A72E3104E3BF535197A7C50 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = E544E81C539A0906461D1F58 /* FirebaseDatabase */; };
 		45C7EB75302A6D8400339CB5 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 45C7EB74302A6D8400339CB5 /* FirebaseMessaging */; };
@@ -17,6 +18,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		11111111111111111111111B /* OpenMoji */ = {isa = PBXFileReference; lastKnownFileType = folder; path = OpenMoji; sourceTree = "<group>"; };
 		45237A443020323200FF5852 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		45C7EB72302A6C5300339CB5 /* Omok.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Omok.entitlements; sourceTree = "<group>"; };
 		49B68FB861DCBC0298D2ACDA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -27,6 +29,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		45146C7D306C372B0065D8E5 /* Resources */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Resources; sourceTree = "<group>"; };
 		45427ADB1C5CD8F76596A841 /* Core */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Core; sourceTree = "<group>"; };
 		7B55057D10E77D17803EEE36 /* Features */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Features; sourceTree = "<group>"; };
 		FBA71F87EC8F6EE88A38AF58 /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Shared; sourceTree = "<group>"; };
@@ -72,6 +75,7 @@
 				45427ADB1C5CD8F76596A841 /* Core */,
 				7B55057D10E77D17803EEE36 /* Features */,
 				FBA71F87EC8F6EE88A38AF58 /* Shared */,
+				11111111111111111111111B /* OpenMoji */,
 			);
 			path = Omok;
 			sourceTree = "<group>";
@@ -91,6 +95,7 @@
 				F82C6B1D4A93E5078D2C7F35 /* GoogleService-Info.plist */,
 				9B62168E35C5A762E8ECE4A5 /* Products */,
 				45C7EB73302A6D8400339CB5 /* Frameworks */,
+				45146C7D306C372B0065D8E5 /* Resources */,
 			);
 			sourceTree = "<group>";
 		};
@@ -110,6 +115,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				45146C7D306C372B0065D8E5 /* Resources */,
 				45427ADB1C5CD8F76596A841 /* Core */,
 				7B55057D10E77D17803EEE36 /* Features */,
 				FBA71F87EC8F6EE88A38AF58 /* Shared */,
@@ -167,6 +173,7 @@
 				B62A74F7AEBBA7BEA450E327 /* Preview Assets.xcassets in Resources */,
 				2842354D852CF6C60107D337 /* Assets.xcassets in Resources */,
 				D19F3C7A5E82B4067C1D9E24 /* GoogleService-Info.plist in Resources */,
+				11111111111111111111111A /* OpenMoji in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,15 +256,13 @@
 				CODE_SIGN_ENTITLEMENTS = Omok/Omok.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 52;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_ASSET_PATHS = "\"Omok/Preview Content\"";
 				DEVELOPMENT_TEAM = K92B539W6W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Omok/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Omok;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Allow speech recognition to show live captions of voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -267,7 +272,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.nicechester.omok;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -350,15 +355,13 @@
 				CODE_SIGN_ENTITLEMENTS = Omok/Omok.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 52;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_ASSET_PATHS = "\"Omok/Preview Content\"";
 				DEVELOPMENT_TEAM = K92B539W6W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Omok/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Omok;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow access to your microphone for voice chat during games";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Allow speech recognition to show live captions of voice chat during games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_GenerationTool = SwiftUI;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -368,7 +371,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.nicechester.omok;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
