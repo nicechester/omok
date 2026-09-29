@@ -60,7 +60,6 @@ struct GameState: Sendable {
     let undoRequest: UndoRequest?
     let previousLastMove: LastMove?
     let createdBy: String
-    let speaking: [Stone: Bool]
     let timerDuration: Int?
     let turnStartedAt: Int?
     let scores: [String: Int]

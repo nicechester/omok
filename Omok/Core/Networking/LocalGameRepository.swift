@@ -92,10 +92,6 @@ class LocalGameRepository: GameRepository {
         try await baseRepository.resetForRematch(gameId: gameId)
     }
 
-    func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws {
-        // No-op for AI games (no voice chat)
-    }
-
     func updatePlayerActive(gameId: String, uid: String, isActive: Bool) async throws {
         try await baseRepository.updatePlayerActive(gameId: gameId, uid: uid, isActive: isActive)
     }
@@ -119,6 +115,10 @@ class LocalGameRepository: GameRepository {
     }
 
     func sendReaction(gameId: String, uid: String, emoji: String) async throws {
+        // No-op for AI games
+    }
+
+    func clearReaction(gameId: String) async throws {
         // No-op for AI games
     }
 

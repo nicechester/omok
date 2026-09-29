@@ -9,13 +9,13 @@ protocol GameRepository {
     func forfeit(gameId: String, uid: String) async throws
     func voteRematch(gameId: String, uid: String) async throws
     func resetForRematch(gameId: String) async throws
-    func updateSpeaking(gameId: String, uid: String, isSpeaking: Bool) async throws
     func updatePlayerActive(gameId: String, uid: String, isActive: Bool) async throws
     func requestUndo(gameId: String, uid: String) async throws
     func approveUndo(gameId: String, uid: String) async throws
     func rejectUndo(gameId: String, uid: String) async throws
     func autoPassTurn(gameId: String, expectedTurn: Stone, expectedTurnStartedAt: Int) async throws
     func sendReaction(gameId: String, uid: String, emoji: String) async throws
+    func clearReaction(gameId: String) async throws
     func deleteGame(gameId: String, uid: String) async throws
 }
 

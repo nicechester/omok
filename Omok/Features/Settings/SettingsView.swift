@@ -4,7 +4,6 @@ import UserNotifications
 struct SettingsView: View {
     @Environment(AuthService.self) private var authService
     @AppStorage(NotificationSettings.storageKey) private var notificationsEnabled = true
-    @AppStorage(AudioOutputSettings.storageKey) private var audioOutputLevel = AudioOutputSettings.defaultLevel.rawValue
     @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
 
     var body: some View {
@@ -50,14 +49,6 @@ struct SettingsView: View {
                         }
 
                         Spacer()
-                    }
-                }
-
-                Section("Audio") {
-                    Picker("Opponent Volume", selection: $audioOutputLevel) {
-                        ForEach(AudioOutputSettings.VolumeLevel.allCases, id: \.self) { level in
-                            Text(level.label).tag(level.rawValue)
-                        }
                     }
                 }
 
