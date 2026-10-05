@@ -10,6 +10,7 @@ struct GameView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(RecentRooms.storageKey) private var recentRoomsData = Data()
+    @AppStorage(RecentEmojis.storageKey) private var recentEmojisData = Data()
     @State private var viewModel: GameViewModel
     @State private var showExitConfirmation = false
     @State private var showForfeitConfirmation = false
@@ -94,11 +95,11 @@ struct GameView: View {
                 .frame(height: 44)
 
                 if showEmojiTray {
-                    let quickEmoji = ["1F604", "1F62E", "1F44F", "1F914", "1F605"]
                     HStack(spacing: 16) {
-                        ForEach(quickEmoji, id: \.self) { hexcode in
+                        ForEach(RecentEmojis.get(from: recentEmojisData), id: \.self) { hexcode in
                             Button {
                                 showEmojiTray = false
+                                recentEmojisData = RecentEmojis.record(hexcode, in: recentEmojisData)
                                 Task { await viewModel.sendReaction(hexcode) }
                             } label: {
                                 OpenMojiImage(hexcode: hexcode)
@@ -207,6 +208,7 @@ struct GameView: View {
         }
         .sheet(isPresented: $showEmojiPicker) {
             EmojiPickerSheet { emoji in
+                recentEmojisData = RecentEmojis.record(emoji, in: recentEmojisData)
                 Task { await viewModel.sendReaction(emoji) }
             }
             .presentationDetents([.medium, .large])
