@@ -55,7 +55,7 @@ struct OmokApp: App {
                             NicknameView(isFirstRun: true)
                         }
                     } else {
-                        RootTabView(uid: authService.currentUserID ?? "", pendingGameCode: $pendingGameCode)
+                        RootTabView(uid: authService.deviceUID, pendingGameCode: $pendingGameCode)
                             .task {
                                 // Check for pending game ID from notification
                                 if let gameId = NotificationManager.shared.pendingGameId {

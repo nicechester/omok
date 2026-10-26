@@ -120,6 +120,7 @@ final class FirebaseGameRepository: GameRepository {
         }
 
         // Backward compat: check if seated under an old Firebase UID, migrate to device UID
+        // MUST check this BEFORE gameFull check, otherwise old UID counts as "other player"
         let knownUIDs = await allKnownUIDs(deviceUID: uid)
         for (playerUid, playerData) in players {
             guard knownUIDs.contains(playerUid),
@@ -141,12 +142,13 @@ final class FirebaseGameRepository: GameRepository {
             return (color, uid)
         }
 
-        // Find which colors are taken
+        // Find which colors are taken (exclude our own old UIDs from count)
         var takenColors: Set<Stone> = []
-        for (_, playerData) in players {
+        for (playerUid, playerData) in players {
             if let playerDict = playerData as? [String: Any],
                let colorRaw = playerDict["color"] as? String,
-               let color = Stone(rawValue: colorRaw) {
+               let color = Stone(rawValue: colorRaw),
+               !knownUIDs.contains(playerUid) {
                 takenColors.insert(color)
             }
         }
